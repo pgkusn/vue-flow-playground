@@ -62,7 +62,7 @@ html, body {
   border-radius: var(--radius-md) !important;
   padding: 12px 18px !important;
   box-shadow: var(--shadow-md) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s !important;
   width: auto !important;
   min-width: 150px;
   text-align: center;
