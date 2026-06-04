@@ -174,6 +174,41 @@ function closeToast() {
   showToast.value = false;
   if (toastTimer) clearTimeout(toastTimer);
 }
+
+// =========================================
+// 節點編輯 Modal 狀態與邏輯
+// =========================================
+
+const isEditModalOpen = ref(false);
+const editingNode = ref<{ id: string; label: string; data: any } | null>(null);
+
+function handleEditNode(payload: { id: string; label: string; data: any }) {
+  // 深度拷貝 payload 避免編輯時即時修改畫布上原有的資料 (以支持取消功能)
+  editingNode.value = JSON.parse(JSON.stringify(payload));
+  isEditModalOpen.value = true;
+}
+
+function closeEditModal() {
+  isEditModalOpen.value = false;
+  editingNode.value = null;
+}
+
+function saveNodeChanges() {
+  if (!editingNode.value) return;
+
+  const nodeIndex = nodes.value.findIndex((n) => n.id === editingNode.value!.id);
+  if (nodeIndex !== -1) {
+    const targetNode = nodes.value[nodeIndex];
+    // 更新資料
+    targetNode.data.title = editingNode.value.data.title;
+    targetNode.data.description = editingNode.value.data.description;
+    targetNode.data.status = editingNode.value.data.status;
+    targetNode.label = editingNode.value.data.title; // 同步更新 label
+    
+    closeEditModal();
+    showNotification("節點已更新 ⚙️", `節點 "${editingNode.value.data.title}" 的設定已儲存！`);
+  }
+}
 </script>
 
 <template>
@@ -235,7 +270,7 @@ function closeToast() {
         >
           <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
           <template #node-custom="nodeProps">
-            <CustomNode v-bind="nodeProps" />
+            <CustomNode v-bind="nodeProps" @edit="handleEditNode" />
           </template>
 
           <!-- 背景網格 -->
@@ -258,6 +293,45 @@ function closeToast() {
         </Transition>
       </div>
     </div>
+
+    <!-- 節點資料編輯彈窗 Modal -->
+    <Transition name="modal">
+      <div v-if="isEditModalOpen && editingNode" class="modal-overlay" @click.self="closeEditModal">
+        <div class="modal-card">
+          <header class="modal-card__header">
+            <h3 class="modal-card__title">⚙️ 編輯節點設定</h3>
+            <span class="modal-card__id">ID: {{ editingNode.id }}</span>
+          </header>
+
+          <main class="modal-card__body">
+            <div class="form-group">
+              <label class="form-label">節點標題</label>
+              <input v-model="editingNode.data.title" type="text" class="form-input" placeholder="請輸入節點名稱">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">節點描述</label>
+              <textarea v-model="editingNode.data.description" rows="3" class="form-input form-input--textarea" placeholder="請輸入節點的描述資訊"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">運行狀態</label>
+              <select v-model="editingNode.data.status" class="form-input form-input--select">
+                <option value="已就緒">已就緒</option>
+                <option value="運行中">運行中</option>
+                <option value="等待中">等待中</option>
+                <option value="已停用">已停用</option>
+              </select>
+            </div>
+          </main>
+
+          <footer class="modal-card__footer">
+            <button class="btn btn--outline" @click="closeEditModal">取消</button>
+            <button class="btn btn--primary" @click="saveNodeChanges">儲存變更</button>
+          </footer>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -276,5 +350,143 @@ function closeToast() {
   width: 100vw;
   display: flex;
   flex-direction: column;
+}
+
+/* Modal 樣式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 450px;
+  max-width: 90%;
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(129, 140, 248, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-card__header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.modal-card__id {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.modal-card__body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+  border-color: var(--accent-indigo);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
+}
+
+.form-input--textarea {
+  resize: none;
+}
+
+.form-input--select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239898b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px;
+}
+
+.modal-card__footer {
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn--outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.btn--outline:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* Modal 過渡動畫 */
+.modal-enter-active, .modal-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.modal-enter-from, .modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal-card, .modal-leave-active .modal-card {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-enter-from .modal-card, .modal-leave-to .modal-card {
+  transform: scale(0.9) translateY(10px);
 }
 </style>

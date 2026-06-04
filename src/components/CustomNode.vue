@@ -9,9 +9,13 @@ interface NodeData {
   status: string
 }
 
-defineProps<{
+const props = defineProps<{
   id: string
   data: NodeData
+}>()
+
+const emit = defineEmits<{
+  (e: 'edit', payload: { id: string; label: string; data: NodeData }): void
 }>()
 </script>
 
@@ -26,8 +30,18 @@ defineProps<{
 
     <!-- 節點標題列 -->
     <div :class="['custom-node__header', `custom-node__header--${data.category}`]">
-      <span class="custom-node__icon">{{ data.icon }}</span>
-      <span>{{ data.title }}</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="custom-node__icon">{{ data.icon }}</span>
+        <span>{{ data.title }}</span>
+      </div>
+      <!-- 編輯按鈕：加了 .stop 阻止點擊事件向外擴散而觸發畫布選取 -->
+      <button 
+        class="custom-node__edit-btn" 
+        title="編輯節點設定"
+        @click.stop="emit('edit', { id, label: data.title, data })"
+      >
+        ⚙️
+      </button>
     </div>
 
     <!-- 節點內容 -->
