@@ -209,6 +209,43 @@ function saveNodeChanges() {
     showNotification("節點已更新 ⚙️", `節點 "${editingNode.value.data.title}" 的設定已儲存！`);
   }
 }
+
+function handleCopyNode(id: string) {
+  const targetNode = nodes.value.find((n) => n.id === id);
+  if (!targetNode) return;
+
+  // 深度拷貝節點以避免參照污染
+  const copiedNode = JSON.parse(JSON.stringify(targetNode));
+  
+  // 生成新 ID 與微調位置以免與原節點重合
+  const newId = `node-${++nodeId}`;
+  copiedNode.id = newId;
+  copiedNode.position = {
+    x: copiedNode.position.x + 50,
+    y: copiedNode.position.y + 50,
+  };
+  
+  copiedNode.data.title = `${copiedNode.data.title} (複製品)`;
+  copiedNode.label = copiedNode.data.title;
+  
+  nodes.value.push(copiedNode);
+  showNotification("複製成功 📋", `已複製產生 "${copiedNode.data.title}"`);
+}
+
+function handleDeleteNode(id: string) {
+  const targetNode = nodes.value.find((n) => n.id === id);
+  if (!targetNode) return;
+
+  const nodeTitle = targetNode.data.title;
+
+  // 移除該節點
+  nodes.value = nodes.value.filter((n) => n.id !== id);
+  
+  // 同步移除所有和該節點相關的連線，保持數據完整性
+  edges.value = edges.value.filter((e) => e.source !== id && e.target !== id);
+  
+  showNotification("刪除成功 🗑️", `已刪除節點 "${nodeTitle}"`);
+}
 </script>
 
 <template>
@@ -270,7 +307,12 @@ function saveNodeChanges() {
         >
           <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
           <template #node-custom="nodeProps">
-            <CustomNode v-bind="nodeProps" @edit="handleEditNode" />
+            <CustomNode 
+              v-bind="nodeProps" 
+              @edit="handleEditNode" 
+              @copy="handleCopyNode"
+              @delete="handleDeleteNode"
+            />
           </template>
 
           <!-- 背景網格 -->

@@ -474,6 +474,12 @@ body {
   transform: scale(1.15);
 }
 
+.custom-node__edit-btn--danger:hover {
+  background: rgba(244, 63, 94, 0.25) !important;
+  color: var(--accent-rose) !important;
+  opacity: 1;
+}
+
 .custom-node__header--input {
   background: linear-gradient(135deg, rgba(52, 211, 153, 0.15) 0%, rgba(45, 212, 191, 0.08) 100%);
   color: var(--accent-emerald);

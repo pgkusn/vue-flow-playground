@@ -9,13 +9,15 @@ interface NodeData {
   status: string
 }
 
-const props = defineProps<{
+defineProps<{
   id: string
   data: NodeData
 }>()
 
 const emit = defineEmits<{
   (e: 'edit', payload: { id: string; label: string; data: NodeData }): void
+  (e: 'copy', id: string): void
+  (e: 'delete', id: string): void
 }>()
 </script>
 
@@ -34,14 +36,32 @@ const emit = defineEmits<{
         <span class="custom-node__icon">{{ data.icon }}</span>
         <span>{{ data.title }}</span>
       </div>
-      <!-- 編輯按鈕：加了 .stop 阻止點擊事件向外擴散而觸發畫布選取 -->
-      <button 
-        class="custom-node__edit-btn" 
-        title="編輯節點設定"
-        @click.stop="emit('edit', { id, label: data.title, data })"
-      >
-        ⚙️
-      </button>
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <!-- 編輯按鈕 -->
+        <button 
+          class="custom-node__edit-btn" 
+          title="編輯節點"
+          @click.stop="emit('edit', { id, label: data.title, data })"
+        >
+          ⚙️
+        </button>
+        <!-- 複製按鈕 -->
+        <button 
+          class="custom-node__edit-btn" 
+          title="複製節點"
+          @click.stop="emit('copy', id)"
+        >
+          📋
+        </button>
+        <!-- 刪除按鈕 -->
+        <button 
+          class="custom-node__edit-btn custom-node__edit-btn--danger" 
+          title="刪除節點"
+          @click.stop="emit('delete', id)"
+        >
+          🗑️
+        </button>
+      </div>
     </div>
 
     <!-- 節點內容 -->
