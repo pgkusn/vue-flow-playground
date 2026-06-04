@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, markRaw } from "vue";
+import { ref } from "vue";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
 import { Controls } from "@vue-flow/controls";
@@ -7,11 +7,6 @@ import { MiniMap } from "@vue-flow/minimap";
 import type { Node, Edge, Connection } from "@vue-flow/core";
 import SimpleCustomNode from "./components/SimpleCustomNode.vue";
 import { initialNodes, initialEdges } from "./initial-elements";
-
-// 註冊自定義節點類型 (使用 markRaw 避免 Vue 對元件實例做無謂的 Proxy 監聽)
-const nodeTypes = {
-  "simple-custom": markRaw(SimpleCustomNode),
-};
 
 // 節點與連線的響應式狀態
 const nodes = ref<Node[]>(initialNodes);
@@ -51,10 +46,14 @@ const onConnect = (connection: Connection) => {
       <VueFlow
         :nodes
         :edges
-        :node-types="nodeTypes"
         :fit-view-on-init="true"
         @connect="onConnect"
       >
+        <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
+        <template #node-simple-custom="nodeProps">
+          <SimpleCustomNode v-bind="nodeProps" />
+        </template>
+
         <!-- 背景網格 -->
         <Background :gap="20" pattern-color="#374151" />
 

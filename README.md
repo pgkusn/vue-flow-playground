@@ -116,13 +116,13 @@ defineProps<{
 </template>
 ```
 
-### 3. 元件註冊與畫布渲染 (`src/App.vue`)
+### 3. 作用域插槽與畫布渲染 (`src/App.vue`)
 
-自定義元件**必須**使用 `markRaw` 包裹以確保最佳效能，避免 Vue 將組件實例轉化為響應式 Proxy。
+Vue Flow 支援使用動態作用域插槽 `#node-<type>` 來直接渲染自定義節點。此方式非常直覺，且無須在 script 中使用 `nodeTypes` 註冊與 `markRaw()` 包裹組件。
 
 ```vue
 <script setup lang="ts">
-import { ref, markRaw } from 'vue'
+import { ref } from 'vue'
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -133,11 +133,6 @@ import { initialNodes, initialEdges } from './initial-elements'
 
 const nodes = ref(initialNodes)
 const edges = ref(initialEdges)
-
-// 註冊自訂節點類型
-const nodeTypes = {
-  'simple-custom': markRaw(SimpleCustomNode),
-}
 
 const onConnect = (connection: Connection) => {
   edges.value.push({
@@ -152,7 +147,12 @@ const onConnect = (connection: Connection) => {
 
 <template>
   <div style="height: 100vh">
-    <VueFlow :nodes :edges :node-types="nodeTypes" @connect="onConnect">
+    <VueFlow :nodes :edges @connect="onConnect">
+      <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
+      <template #node-simple-custom="nodeProps">
+        <SimpleCustomNode v-bind="nodeProps" />
+      </template>
+
       <Background />
       <Controls />
       <MiniMap />
@@ -171,6 +171,6 @@ const onConnect = (connection: Connection) => {
   1. **Vue Flow 快速上手**：介紹什麼是 Vue Flow 及其使用場景。
   2. **安裝與環境設定**：僅需三步即可在 Vite + Vue 專案中完成整合。
   3. **核心概念 (Nodes & Edges)**：介紹 input、default、output 等內建節點。
-  4. **自定義節點 (Custom Nodes)**：圖解如何定義自訂 HTML/CSS 元件並使用 `markRaw` 註冊。
+  4. **自定義節點與動態插槽**：圖解如何開發自定義節點卡片，並搭配 Vue 作用域插槽（Dynamic Slots `#node-<type>`）直接完成渲染，無須手動註冊。
   5. **連線邏輯 (@connect)**：如何使用最基礎的事件捕獲，讓使用者自主畫出有向圖。
   6. **外掛整合**：使用 Background, Controls 和 MiniMap 加強使用者體驗。
