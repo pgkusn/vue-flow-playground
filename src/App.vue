@@ -1,49 +1,39 @@
 <script setup lang="ts">
-import { ref, markRaw } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
-import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
-import { MiniMap } from '@vue-flow/minimap'
-import type { Node, Edge, Connection } from '@vue-flow/core'
+import { ref } from "vue";
+import { VueFlow, useVueFlow } from "@vue-flow/core";
+import { Background } from "@vue-flow/background";
+import { Controls } from "@vue-flow/controls";
+import { MiniMap } from "@vue-flow/minimap";
+import type { Node, Edge, Connection } from "@vue-flow/core";
 
-import CustomNode from './components/CustomNode.vue'
-import Sidebar from './components/Sidebar.vue'
-import { initialNodes, initialEdges } from './initial-elements'
+import CustomNode from "./components/CustomNode.vue";
+import Sidebar from "./components/Sidebar.vue";
+import { initialNodes, initialEdges } from "./initial-elements";
 
 // =========================================
 // 狀態管理
 // =========================================
 
-const nodes = ref<Node[]>(initialNodes)
-const edges = ref<Edge[]>(initialEdges)
-
-/** 自定義節點類型映射 */
-const nodeTypes = {
-  custom: markRaw(CustomNode),
-}
+const nodes = ref<Node[]>(initialNodes);
+const edges = ref<Edge[]>(initialEdges);
 
 /** 節點 ID 計數器 */
-let nodeId = 100
+let nodeId = 100;
 
 /** Toast 通知 */
-const showToast = ref(true)
+const showToast = ref(true);
 const toastMessage = ref({
-  title: '歡迎使用 Vue Flow Playground 👋',
-  content: '這是一個資料處理管線的範例。你可以拖曳左側面板的節點到畫布上、建立連線、或移動現有節點。',
-})
+  title: "歡迎使用 Vue Flow Playground 👋",
+  content:
+    "這是一個資料處理管線的範例。你可以拖曳左側面板的節點到畫布上、建立連線、或移動現有節點。",
+});
 
 // =========================================
 // useVueFlow Composable
 // =========================================
 
-const {
-  onConnect,
-  addEdges,
-  addNodes,
-  project,
-  vueFlowRef,
-  fitView,
-} = useVueFlow()
+const { onConnect, addEdges, addNodes, project, vueFlowRef, fitView } =
+  useVueFlow();
 
 /**
  * 當使用者連接兩個節點時
@@ -53,22 +43,25 @@ onConnect((connection: Connection) => {
   addEdges([
     {
       ...connection,
-      type: 'smoothstep',
+      type: "smoothstep",
       animated: true,
-      style: { stroke: '#818cf8' },
+      style: { stroke: "#818cf8" },
     },
-  ])
-  showNotification('連線建立 ✅', `${connection.source} → ${connection.target}`)
-})
+  ]);
+  showNotification(
+    "連線建立 ✅",
+    `${connection.source} → ${connection.target}`,
+  );
+});
 
 // =========================================
 // 拖放 (Drag & Drop) 處理
 // =========================================
 
 function onDragOver(event: DragEvent) {
-  event.preventDefault()
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
 }
 
@@ -77,44 +70,47 @@ function onDragOver(event: DragEvent) {
  * 根據節點類型建立對應的自定義節點
  */
 function onDrop(event: DragEvent) {
-  if (!event.dataTransfer) return
+  if (!event.dataTransfer) return;
 
-  const nodeType = event.dataTransfer.getData('application/vueflow')
-  if (!nodeType) return
+  const nodeType = event.dataTransfer.getData("application/vueflow");
+  if (!nodeType) return;
 
   // 計算畫布座標
-  const { left, top } = vueFlowRef.value!.getBoundingClientRect()
+  const { left, top } = vueFlowRef.value!.getBoundingClientRect();
   const position = project({
     x: event.clientX - left,
     y: event.clientY - top,
-  })
+  });
 
-  const id = `node-${++nodeId}`
+  const id = `node-${++nodeId}`;
 
-  const categoryConfig: Record<string, { icon: string; title: string; description: string }> = {
-    input: { icon: '📥', title: '新輸入節點', description: '設定資料來源' },
-    process: { icon: '⚙️', title: '新處理節點', description: '資料處理邏輯' },
-    output: { icon: '📤', title: '新輸出節點', description: '輸出目的地' },
-    data: { icon: '💾', title: '新資料節點', description: '資料儲存' },
-  }
+  const categoryConfig: Record<
+    string,
+    { icon: string; title: string; description: string }
+  > = {
+    input: { icon: "📥", title: "新輸入節點", description: "設定資料來源" },
+    process: { icon: "⚙️", title: "新處理節點", description: "資料處理邏輯" },
+    output: { icon: "📤", title: "新輸出節點", description: "輸出目的地" },
+    data: { icon: "💾", title: "新資料節點", description: "資料儲存" },
+  };
 
-  const config = categoryConfig[nodeType] || categoryConfig.process
+  const config = categoryConfig[nodeType] || categoryConfig.process;
 
   const newNode: Node = {
     id,
-    type: 'custom',
+    type: "custom",
     position,
     data: {
       category: nodeType,
       icon: config.icon,
       title: config.title,
       description: config.description,
-      status: '新建立',
+      status: "新建立",
     },
-  }
+  };
 
-  addNodes([newNode])
-  showNotification('節點新增 ✨', `已建立 ${config.title} (${id})`)
+  addNodes([newNode]);
+  showNotification("節點新增 ✨", `已建立 ${config.title} (${id})`);
 }
 
 // =========================================
@@ -123,22 +119,22 @@ function onDrop(event: DragEvent) {
 
 /** 適配畫面 */
 function handleFitView() {
-  fitView({ padding: 0.2, duration: 400 })
+  fitView({ padding: 0.2, duration: 400 });
 }
 
 /** 清除所有節點與邊 */
 function handleClear() {
-  nodes.value = []
-  edges.value = []
-  showNotification('已清空畫布 🗑️', '所有節點與連線已被移除')
+  nodes.value = [];
+  edges.value = [];
+  showNotification("已清空畫布 🗑️", "所有節點與連線已被移除");
 }
 
 /** 重置為初始狀態 */
 function handleReset() {
-  nodes.value = [...initialNodes]
-  edges.value = [...initialEdges]
-  setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
-  showNotification('已重置 ↩️', '畫布已恢復為初始狀態')
+  nodes.value = [...initialNodes];
+  edges.value = [...initialEdges];
+  setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+  showNotification("已重置 ↩️", "畫布已恢復為初始狀態");
 }
 
 /** 匯出畫布資料 */
@@ -146,37 +142,37 @@ function handleExport() {
   const data = {
     nodes: nodes.value,
     edges: edges.value,
-  }
-  const json = JSON.stringify(data, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'vue-flow-export.json'
-  a.click()
-  URL.revokeObjectURL(url)
-  showNotification('匯出成功 📦', '流程圖資料已儲存為 JSON 檔案')
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "vue-flow-export.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  showNotification("匯出成功 📦", "流程圖資料已儲存為 JSON 檔案");
 }
 
 // =========================================
 // Toast 通知
 // =========================================
 
-let toastTimer: ReturnType<typeof setTimeout> | null = null
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
 function showNotification(title: string, content: string) {
-  toastMessage.value = { title, content }
-  showToast.value = true
+  toastMessage.value = { title, content };
+  showToast.value = true;
 
-  if (toastTimer) clearTimeout(toastTimer)
+  if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
-    showToast.value = false
-  }, 4000)
+    showToast.value = false;
+  }, 4000);
 }
 
 function closeToast() {
-  showToast.value = false
-  if (toastTimer) clearTimeout(toastTimer)
+  showToast.value = false;
+  if (toastTimer) clearTimeout(toastTimer);
 }
 </script>
 
@@ -205,10 +201,20 @@ function closeToast() {
           </div>
         </div>
 
-        <button class="btn" @click="handleFitView" title="適配畫面">🔍 適配</button>
-        <button class="btn btn--primary" @click="handleExport" title="匯出 JSON">📦 匯出</button>
+        <button class="btn" @click="handleFitView" title="適配畫面">
+          🔍 適配
+        </button>
+        <button
+          class="btn btn--primary"
+          @click="handleExport"
+          title="匯出 JSON"
+        >
+          📦 匯出
+        </button>
         <button class="btn" @click="handleReset" title="重置">↩️ 重置</button>
-        <button class="btn btn--danger" @click="handleClear" title="清空">🗑️ 清空</button>
+        <button class="btn btn--danger" @click="handleClear" title="清空">
+          🗑️ 清空
+        </button>
       </div>
     </header>
 
@@ -218,20 +224,20 @@ function closeToast() {
       <Sidebar />
 
       <!-- 畫布區域 -->
-      <div
-        class="canvas-wrapper"
-        @dragover="onDragOver"
-        @drop="onDrop"
-      >
+      <div class="canvas-wrapper" @dragover="onDragOver" @drop="onDrop">
         <VueFlow
-          v-model:nodes="nodes"
-          v-model:edges="edges"
-          :node-types="nodeTypes"
+          :nodes
+          :edges
           :min-zoom="0.2"
           :max-zoom="4"
           fit-view-on-init
           :default-edge-options="{ type: 'smoothstep' }"
         >
+          <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
+          <template #node-custom="nodeProps">
+            <CustomNode v-bind="nodeProps" />
+          </template>
+
           <!-- 背景網格 -->
           <Background :gap="20" :size="1" />
 

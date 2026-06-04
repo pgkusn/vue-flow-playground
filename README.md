@@ -117,18 +117,21 @@ defineProps(['id', 'data'])
 </template>
 ```
 
-然後在 VueFlow 中註冊：
+然後直接在 VueFlow 元件中使用動態作用域插槽 `#node-<type>` 來渲染：
 
 ```vue
 <script setup>
-import { markRaw } from 'vue'
 import CustomNode from './CustomNode.vue'
-
-// ⚠️ 重要：使用 markRaw 避免 Vue 對元件進行響應式處理
-const nodeTypes = { custom: markRaw(CustomNode) }
 </script>
 
-<VueFlow :node-types="nodeTypes" />
+<template>
+  <VueFlow :nodes="nodes" :edges="edges">
+    <!-- 使用動態插槽來渲染自定義節點 -->
+    <template #node-custom="nodeProps">
+      <CustomNode v-bind="nodeProps" />
+    </template>
+  </VueFlow>
+</template>
 ```
 
 ### 3. 邊的類型（Edge Types）
