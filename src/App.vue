@@ -1,15 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { VueFlow } from '@vue-flow/core'
-import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
-import { MiniMap } from '@vue-flow/minimap'
-import type { Node, Edge, Connection } from '@vue-flow/core'
-import { initialNodes, initialEdges } from './initial-elements'
+import { ref, markRaw } from "vue";
+import { VueFlow } from "@vue-flow/core";
+import { Background } from "@vue-flow/background";
+import { Controls } from "@vue-flow/controls";
+import { MiniMap } from "@vue-flow/minimap";
+import type { Node, Edge, Connection } from "@vue-flow/core";
+import SimpleCustomNode from "./components/SimpleCustomNode.vue";
+import { initialNodes, initialEdges } from "./initial-elements";
+
+// 註冊自定義節點類型 (使用 markRaw 避免 Vue 對元件實例做無謂的 Proxy 監聽)
+const nodeTypes = {
+  "simple-custom": markRaw(SimpleCustomNode),
+};
 
 // 節點與連線的響應式狀態
-const nodes = ref<Node[]>(initialNodes)
-const edges = ref<Edge[]>(initialEdges)
+const nodes = ref<Node[]>(initialNodes);
+const edges = ref<Edge[]>(initialEdges);
 
 /**
  * 處理連線建立事件
@@ -22,9 +28,9 @@ const onConnect = (connection: Connection) => {
     source: connection.source,
     target: connection.target,
     animated: true, // 新建連線帶有動態流動效果
-    style: { stroke: '#10b981' }, // 綠色連線
-  })
-}
+    style: { stroke: "#10b981" }, // 綠色連線
+  });
+};
 </script>
 
 <template>
@@ -43,8 +49,9 @@ const onConnect = (connection: Connection) => {
     <!-- 畫布區域 -->
     <main class="canvas-container">
       <VueFlow
-        v-model:nodes="nodes"
-        v-model:edges="edges"
+        :nodes
+        :edges
+        :node-types="nodeTypes"
         :fit-view-on-init="true"
         @connect="onConnect"
       >
@@ -69,7 +76,7 @@ const onConnect = (connection: Connection) => {
   width: 100vw;
   background-color: #0f172a; /* 深色背景 */
   color: #f8fafc;
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   overflow: hidden;
 }
 

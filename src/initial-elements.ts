@@ -13,9 +13,14 @@ export const initialNodes: Node[] = [
   },
   {
     id: 'node-2',
-    // 預設類型 (default)
-    label: '預設處理節點 (Default Node)',
+    type: 'simple-custom',
+    label: '自訂處理節點 (Custom Node)',
     position: { x: 400, y: 150 },
+    data: {
+      emoji: '⚙️',
+      title: '自訂處理節點',
+      description: '執行資料篩選與轉換',
+    },
   },
   {
     id: 'node-3',
