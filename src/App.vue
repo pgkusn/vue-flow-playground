@@ -7,6 +7,7 @@ import { MiniMap } from "@vue-flow/minimap";
 import type { Node, Edge, Connection } from "@vue-flow/core";
 
 import CustomNode from "./components/CustomNode.vue";
+import CustomEdge from "./components/CustomEdge.vue";
 import Sidebar from "./components/Sidebar.vue";
 import { initialNodes, initialEdges } from "./initial-elements";
 
@@ -32,8 +33,16 @@ const toastMessage = ref({
 // useVueFlow Composable
 // =========================================
 
-const { onConnect, addEdges, addNodes, project, vueFlowRef, fitView } =
-  useVueFlow();
+const {
+  onConnect,
+  addEdges,
+  addNodes,
+  removeNodes,
+  findNode,
+  project,
+  vueFlowRef,
+  fitView,
+} = useVueFlow();
 
 /**
  * 當使用者連接兩個節點時
@@ -43,7 +52,7 @@ onConnect((connection: Connection) => {
   addEdges([
     {
       ...connection,
-      type: "smoothstep",
+      type: "deletable",
       animated: true,
       style: { stroke: "#818cf8" },
     },
@@ -211,7 +220,7 @@ function saveNodeChanges() {
 }
 
 function handleCopyNode(id: string) {
-  const targetNode = nodes.value.find((n) => n.id === id);
+  const targetNode = findNode(id);
   if (!targetNode) return;
 
   // 深度拷貝節點以避免參照污染
@@ -228,21 +237,18 @@ function handleCopyNode(id: string) {
   copiedNode.data.title = `${copiedNode.data.title} (複製品)`;
   copiedNode.label = copiedNode.data.title;
   
-  nodes.value.push(copiedNode);
+  addNodes([copiedNode]);
   showNotification("複製成功 📋", `已複製產生 "${copiedNode.data.title}"`);
 }
 
 function handleDeleteNode(id: string) {
-  const targetNode = nodes.value.find((n) => n.id === id);
+  const targetNode = findNode(id);
   if (!targetNode) return;
 
   const nodeTitle = targetNode.data.title;
 
-  // 移除該節點
-  nodes.value = nodes.value.filter((n) => n.id !== id);
-  
-  // 同步移除所有和該節點相關的連線，保持數據完整性
-  edges.value = edges.value.filter((e) => e.source !== id && e.target !== id);
+  // 使用 Vue Flow composable 的 removeNodes，會自動處理節點與相關連線的刪除
+  removeNodes(id);
   
   showNotification("刪除成功 🗑️", `已刪除節點 "${nodeTitle}"`);
 }
@@ -303,7 +309,7 @@ function handleDeleteNode(id: string) {
           :min-zoom="0.2"
           :max-zoom="4"
           fit-view-on-init
-          :default-edge-options="{ type: 'smoothstep' }"
+          :default-edge-options="{ type: 'deletable' }"
         >
           <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
           <template #node-custom="nodeProps">
@@ -315,7 +321,11 @@ function handleDeleteNode(id: string) {
             />
           </template>
 
-          <!-- 背景網格 -->
+          <!-- 使用動態作用域插槽 #edge-<type> 來渲染自定義 Edge -->
+          <template #edge-deletable="edgeProps">
+            <CustomEdge v-bind="edgeProps" />
+          </template>
+
           <Background :gap="20" :size="1" />
 
           <!-- 控制按鈕 -->

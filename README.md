@@ -156,7 +156,74 @@ const edges = [
 ]
 ```
 
-### 4. 使用 useVueFlow Composable
+### 4. 自定義邊（Custom Edges）
+
+為了在連線（Edge）上新增互動元素（例如：滑鼠懸停時顯示「刪除連線」的按鈕），我們可以使用自定義邊。
+
+由於 Vue Flow 的 `EdgeLabelRenderer` 是將內容 Teleport 到獨立的 DOM 容器（`.vue-flow__edge-labels`），使得純 CSS 的 `:hover` 選擇器無法跨越 SVG 與 HTML 邊界來驅動按鈕顯示。本專案採用以下方法解決：
+1. **JavaScript 響應式狀態**：使用 `const isHovered = ref(false)`。
+2. **透明加粗感應區**：在原本的連線上方疊加一個透明且較寬的 `<path stroke-width="20" stroke="transparent">`。
+3. **滑鼠事件驅動**：利用 `@mouseenter` / `@mouseleave` 監聽感應區與按鈕包裹層，從而流暢且精準地控制刪除按鈕的顯示狀態。
+4. **調用 Composable 刪除**：點擊按鈕時觸發 `useVueFlow()` 解構出來的 `removeEdges(props.id)` 來移除連線。
+
+#### 自定義邊元件實作示例（`CustomEdge.vue`）：
+
+```vue
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { getSmoothStepPath, EdgeLabelRenderer, BaseEdge, useVueFlow, type EdgeProps } from '@vue-flow/core'
+
+const props = defineProps<EdgeProps>()
+const { removeEdges } = useVueFlow()
+const isHovered = ref(false)
+
+const pathData = computed(() => getSmoothStepPath({
+  sourceX: props.sourceX, sourceY: props.sourceY, sourcePosition: props.sourcePosition,
+  targetX: props.targetX, targetY: props.targetY, targetPosition: props.targetPosition,
+}))
+const edgePath = computed(() => pathData.value[0])
+const labelX = computed(() => pathData.value[1])
+const labelY = computed(() => pathData.value[2])
+</script>
+
+<template>
+  <!-- 渲染基礎連線 -->
+  <BaseEdge :id="id" :path="edgePath" :marker-end="markerEnd" :style="style" />
+
+  <!-- 透明感應區（寬度 20px） -->
+  <path :d="edgePath" fill="none" stroke="transparent" stroke-width="20"
+        @mouseenter="isHovered = true" @mouseleave="isHovered = false" />
+
+  <!-- 刪除按鈕 -->
+  <EdgeLabelRenderer>
+    <div :style="{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all' }"
+         @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+      <button v-show="isHovered || selected" class="edge-delete-btn" @click.stop="removeEdges(id)">×</button>
+    </div>
+  </EdgeLabelRenderer>
+</template>
+```
+
+#### 在 `App.vue` 註冊與使用自定義邊：
+
+```vue
+<script setup>
+import CustomEdge from './components/CustomEdge.vue'
+</script>
+
+<template>
+  <VueFlow :nodes="nodes" :edges="edges">
+    <!-- 使用動態作用域插槽註冊名為 deletable 的邊 -->
+    <template #edge-deletable="edgeProps">
+      <CustomEdge v-bind="edgeProps" />
+    </template>
+  </VueFlow>
+</template>
+```
+
+---
+
+### 5. 使用 useVueFlow Composable
 
 `useVueFlow` 是 Vue Flow 提供的核心 Composable，提供各種方法和事件：
 
@@ -169,19 +236,22 @@ const {
   addNodes,        // 新增節點
   addEdges,        // 新增邊
   removeNodes,     // 移除節點
+  removeEdges,     // 移除邊
   fitView,         // 適配畫面
   project,         // 座標轉換（螢幕座標 → 畫布座標）
   toObject,        // 匯出當前狀態
 } = useVueFlow()
 
-// 監聽連線事件
+// 監聽連線事件，建立 type 為 'deletable' 的自定義連線
 onConnect((connection) => {
-  addEdges([{ ...connection, type: 'smoothstep' }])
+  addEdges([{ ...connection, type: 'deletable' }])
 })
 </script>
 ```
 
-### 5. 拖放功能（Drag & Drop）
+---
+
+### 6. 拖放功能（Drag & Drop）
 
 實現從側邊欄拖曳節點到畫布的流程：
 
@@ -206,7 +276,9 @@ function onDrop(event: DragEvent) {
 }
 ```
 
-### 6. 外掛（Plugins）
+---
+
+### 7. 外掛（Plugins）
 
 Vue Flow 提供三個官方外掛：
 
