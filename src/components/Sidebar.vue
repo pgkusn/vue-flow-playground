@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useDnD } from '../composables/useDnD'
+
+const { onDragStart } = useDnD()
+
 /**
  * Sidebar 元件
  * 提供可拖曳的節點項目列表，用於拖放到畫布上新增節點
@@ -41,17 +45,6 @@ const nodeTypes = [
     iconClass: 'sidebar__node-icon--condition',
   },
 ]
-
-/**
- * 拖曳開始事件
- * 將節點類型資訊附加到 dataTransfer
- */
-function onDragStart(event: DragEvent, nodeType: string) {
-  if (event.dataTransfer) {
-    event.dataTransfer.setData('application/vueflow', nodeType)
-    event.dataTransfer.effectAllowed = 'move'
-  }
-}
 </script>
 
 <template>

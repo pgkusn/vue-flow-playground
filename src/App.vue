@@ -12,6 +12,7 @@ import CustomEdge from "./components/CustomEdge.vue";
 import Sidebar from "./components/Sidebar.vue";
 import { initialNodes, initialEdges } from "./initial-elements";
 import { useHistory } from "./composables/useHistory";
+import { useDnD } from "./composables/useDnD";
 
 // =========================================
 // 狀態管理
@@ -47,10 +48,15 @@ const {
   addNodes,
   removeNodes,
   findNode,
-  project,
-  vueFlowRef,
   fitView,
 } = useVueFlow();
+
+const {
+  isDragOver,
+  onDragOver,
+  onDragLeave,
+  onDrop: dndDrop,
+} = useDnD();
 
 /**
  * 當使用者連接兩個節點時
@@ -92,61 +98,11 @@ onConnect((connection: Connection) => {
 // 拖放 (Drag & Drop) 處理
 // =========================================
 
-function onDragOver(event: DragEvent) {
-  event.preventDefault();
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = "move";
+function handleDrop(event: DragEvent) {
+  const newNode = dndDrop(event);
+  if (newNode) {
+    showNotification("節點新增 ✨", `已建立 ${newNode.data.title} (${newNode.id})`);
   }
-}
-
-/**
- * 拖放節點到畫布時觸發
- * 根據節點類型建立對應的自定義節點
- */
-function onDrop(event: DragEvent) {
-  if (!event.dataTransfer) return;
-
-  const nodeType = event.dataTransfer.getData("application/vueflow");
-  if (!nodeType) return;
-
-  // 計算畫布座標
-  const { left, top } = vueFlowRef.value!.getBoundingClientRect();
-  const position = project({
-    x: event.clientX - left,
-    y: event.clientY - top,
-  });
-
-  const id = `node-${++nodeId}`;
-
-  const categoryConfig: Record<
-    string,
-    { icon: string; title: string; description: string }
-  > = {
-    input: { icon: "📥", title: "新輸入節點", description: "設定資料來源" },
-    process: { icon: "⚙️", title: "新處理節點", description: "資料處理邏輯" },
-    output: { icon: "📤", title: "新輸出節點", description: "輸出目的地" },
-    data: { icon: "💾", title: "新資料節點", description: "資料儲存" },
-    condition: { icon: "🔀", title: "新條件節點", description: "條件判斷" },
-  };
-
-  const config = categoryConfig[nodeType] || categoryConfig.process;
-
-  const newNode: Node = {
-    id,
-    type: nodeType === "condition" ? "condition" : "custom",
-    position,
-    data: {
-      category: nodeType,
-      icon: config.icon,
-      title: config.title,
-      description: config.description,
-      status: "新建立",
-      ...(nodeType === "condition" ? { condition: "value > 0" } : {}),
-    },
-  };
-
-  addNodes([newNode]);
-  showNotification("節點新增 ✨", `已建立 ${config.title} (${id})`);
 }
 
 // =========================================
@@ -377,7 +333,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
       <Sidebar />
 
       <!-- 畫布區域 -->
-      <div class="canvas-wrapper" @dragover="onDragOver" @drop="onDrop">
+      <div class="canvas-wrapper" :class="{ 'canvas-wrapper--drag-over': isDragOver }" @dragover="onDragOver" @dragleave="onDragLeave" @drop="handleDrop">
         <VueFlow
           :nodes
           :edges
