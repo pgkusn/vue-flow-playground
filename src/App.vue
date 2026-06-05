@@ -27,7 +27,7 @@ let nodeId = 100;
 // Undo / Redo 歷史管理
 // =========================================
 
-const { canUndo, canRedo, record, undo, redo, clearHistory } = useHistory(nodes, edges);
+const { canUndo, canRedo, undo, redo, init: initHistory, reset: resetHistory } = useHistory();
 
 /** Toast 通知 */
 const showToast = ref(true);
@@ -57,7 +57,6 @@ const {
  * 自動建立一條動畫邊；若來源為條件節點的 yes/no Handle 則自動標註
  */
 onConnect((connection: Connection) => {
-  record();
   const handleId = connection.sourceHandle;
 
   // 根據 sourceHandle 決定標籤與配色
@@ -146,7 +145,6 @@ function onDrop(event: DragEvent) {
     },
   };
 
-  record();
   addNodes([newNode]);
   showNotification("節點新增 ✨", `已建立 ${config.title} (${id})`);
 }
@@ -162,7 +160,6 @@ function handleFitView() {
 
 /** 清除所有節點與邊 */
 function handleClear() {
-  record();
   nodes.value = [];
   edges.value = [];
   showNotification("已清空畫布 🗑️", "所有節點與連線已被移除");
@@ -170,10 +167,9 @@ function handleClear() {
 
 /** 重置為初始狀態 */
 function handleReset() {
-  record();
   nodes.value = [...initialNodes];
   edges.value = [...initialEdges];
-  clearHistory();
+  resetHistory();
   setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
   showNotification("已重置 ↩️", "畫布已恢復為初始狀態");
 }
@@ -239,7 +235,6 @@ function saveNodeChanges() {
 
   const nodeIndex = nodes.value.findIndex((n) => n.id === editingNode.value!.id);
   if (nodeIndex !== -1) {
-    record();
     const targetNode = nodes.value[nodeIndex];
     // 更新資料
     targetNode.data.title = editingNode.value.data.title;
@@ -270,7 +265,6 @@ function handleCopyNode(id: string) {
   copiedNode.data.title = `${copiedNode.data.title} (複製品)`;
   copiedNode.label = copiedNode.data.title;
   
-  record();
   addNodes([copiedNode]);
   showNotification("複製成功 📋", `已複製產生 "${copiedNode.data.title}"`);
 }
@@ -281,7 +275,6 @@ function handleDeleteNode(id: string) {
 
   const nodeTitle = targetNode.data.title;
 
-  record();
   // 使用 Vue Flow composable 的 removeNodes，會自動處理節點與相關連線的刪除
   removeNodes(id);
   
@@ -306,7 +299,11 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeyDown));
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+  // 初始化歷史基準快照
+  initHistory();
+});
 onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 </script>
 

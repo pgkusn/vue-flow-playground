@@ -1,108 +1,98 @@
-import { ref, watch, type Ref } from 'vue'
-import type { Node, Edge } from '@vue-flow/core'
-
-export interface HistorySnapshot {
-  nodes: Node[]
-  edges: Edge[]
-}
+import { ref, computed } from 'vue'
+import { useVueFlow } from '@vue-flow/core'
 
 /**
- * useHistory — 提供 undo / redo 功能的 composable
+ * useHistory — 上一步 / 下一步（undo / redo）
  *
- * 監聽 nodes 與 edges 的變化，自動記錄快照到歷史堆疊中。
- * 提供 undo() / redo() 方法與 canUndo / canRedo 狀態。
+ * 透過 Vue Flow 的 toObject / fromObject 進行完整快照，
+ * 監聽 onNodesChange / onEdgesChange 自動記錄，以 debounce 避免高頻記錄。
  */
-export function useHistory(
-  nodes: Ref<Node[]>,
-  edges: Ref<Edge[]>,
-  options: { maxHistory?: number } = {},
-) {
-  const { maxHistory = 50 } = options
+export function useHistory() {
+  const { toObject, fromObject, onNodesChange, onEdgesChange } = useVueFlow()
 
-  /** 歷史堆疊 */
-  const undoStack = ref<HistorySnapshot[]>([])
-  /** 重做堆疊 */
-  const redoStack = ref<HistorySnapshot[]>([])
+  const undoStack = ref<string[]>([])
+  const redoStack = ref<string[]>([])
 
-  /** 是否可以 undo / redo */
-  const canUndo = ref(false)
-  const canRedo = ref(false)
+  /** 當前狀態的快照字串 */
+  let current: string | null = null
+  /** 是否正在套用快照（期間不記錄） */
+  let applying = false
+  /** debounce timer */
+  let timer: ReturnType<typeof setTimeout> | null = null
 
-  /** 內部旗標：跳過由 undo/redo 本身觸發的 watch */
-  let isRestoring = false
-
-  /** 將當前狀態快照化（深拷貝） */
-  function takeSnapshot(): HistorySnapshot {
-    return {
-      nodes: JSON.parse(JSON.stringify(nodes.value)),
-      edges: JSON.parse(JSON.stringify(edges.value)),
-    }
+  /** 取得當前 Vue Flow 完整狀態的 JSON 字串 */
+  function snapshot(): string {
+    return JSON.stringify(toObject())
   }
 
-  /** 更新 canUndo / canRedo 狀態 */
-  function updateFlags() {
-    canUndo.value = undoStack.value.length > 0
-    canRedo.value = redoStack.value.length > 0
+  /** 畫布就緒後呼叫，建立初始基準 */
+  function init() {
+    applying = true
+    current = snapshot()
+    // 等初始渲染觸發的 change 事件結束後再開始記錄
+    setTimeout(() => { applying = false }, 500)
   }
 
-  /** 手動記錄一次快照（在執行操作前呼叫） */
-  function record() {
-    if (isRestoring) return
-    undoStack.value.push(takeSnapshot())
-    if (undoStack.value.length > maxHistory) {
-      undoStack.value.shift()
-    }
-    // 新操作會清空 redo 堆疊
+  /** 重設歷史（例如重置畫布後呼叫） */
+  function reset() {
+    undoStack.value = []
     redoStack.value = []
-    updateFlags()
+    current = snapshot()
+  }
+
+  /**
+   * 記錄一次變更
+   * 使用 300ms debounce，避免拖曳等高頻操作產生大量快照。
+   * 只有當狀態真正變化時才推入堆疊。
+   */
+  function record() {
+    if (applying || current === null) return
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      const snap = snapshot()
+      if (snap === current) return
+      undoStack.value.push(current!)
+      if (undoStack.value.length > 50) undoStack.value.shift()
+      redoStack.value = []
+      current = snap
+    }, 300)
+  }
+
+  // 自動監聽節點與邊的變更
+  onNodesChange(record)
+  onEdgesChange(record)
+
+  /** 套用快照：使用 fromObject 還原完整狀態 */
+  async function apply(snap: string) {
+    applying = true
+    await fromObject(JSON.parse(snap))
+    current = snap
+    // 等 fromObject 觸發的 change 事件結束後再恢復記錄
+    setTimeout(() => { applying = false }, 400)
   }
 
   /** 還原到上一步 */
-  function undo() {
-    if (undoStack.value.length === 0) return
-
-    const snapshot = undoStack.value.pop()!
-    // 把當前狀態推入 redo
-    redoStack.value.push(takeSnapshot())
-
-    isRestoring = true
-    nodes.value = snapshot.nodes
-    edges.value = snapshot.edges
-    // 等 Vue 的響應完成後再取消旗標
-    setTimeout(() => { isRestoring = false }, 0)
-
-    updateFlags()
+  async function undo() {
+    if (!undoStack.value.length || current === null) return
+    const snap = undoStack.value.pop()!
+    redoStack.value.push(current)
+    await apply(snap)
   }
 
   /** 重做下一步 */
-  function redo() {
-    if (redoStack.value.length === 0) return
-
-    const snapshot = redoStack.value.pop()!
-    // 把當前狀態推入 undo
-    undoStack.value.push(takeSnapshot())
-
-    isRestoring = true
-    nodes.value = snapshot.nodes
-    edges.value = snapshot.edges
-    setTimeout(() => { isRestoring = false }, 0)
-
-    updateFlags()
-  }
-
-  /** 清空歷史 */
-  function clearHistory() {
-    undoStack.value = []
-    redoStack.value = []
-    updateFlags()
+  async function redo() {
+    if (!redoStack.value.length || current === null) return
+    const snap = redoStack.value.pop()!
+    undoStack.value.push(current)
+    await apply(snap)
   }
 
   return {
-    canUndo,
-    canRedo,
-    record,
     undo,
     redo,
-    clearHistory,
+    init,
+    reset,
+    canUndo: computed(() => undoStack.value.length > 0),
+    canRedo: computed(() => redoStack.value.length > 0),
   }
 }
