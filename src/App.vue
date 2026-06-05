@@ -7,6 +7,7 @@ import { MiniMap } from "@vue-flow/minimap";
 import type { Node, Edge, Connection } from "@vue-flow/core";
 
 import CustomNode from "./components/CustomNode.vue";
+import ConditionNode from "./components/ConditionNode.vue";
 import CustomEdge from "./components/CustomEdge.vue";
 import Sidebar from "./components/Sidebar.vue";
 import { initialNodes, initialEdges } from "./initial-elements";
@@ -101,13 +102,14 @@ function onDrop(event: DragEvent) {
     process: { icon: "⚙️", title: "新處理節點", description: "資料處理邏輯" },
     output: { icon: "📤", title: "新輸出節點", description: "輸出目的地" },
     data: { icon: "💾", title: "新資料節點", description: "資料儲存" },
+    condition: { icon: "🔀", title: "新條件節點", description: "條件判斷" },
   };
 
   const config = categoryConfig[nodeType] || categoryConfig.process;
 
   const newNode: Node = {
     id,
-    type: "custom",
+    type: nodeType === "condition" ? "condition" : "custom",
     position,
     data: {
       category: nodeType,
@@ -115,6 +117,7 @@ function onDrop(event: DragEvent) {
       title: config.title,
       description: config.description,
       status: "新建立",
+      ...(nodeType === "condition" ? { condition: "value > 0" } : {}),
     },
   };
 
@@ -316,6 +319,16 @@ function handleDeleteNode(id: string) {
             <CustomNode 
               v-bind="nodeProps" 
               @edit="handleEditNode" 
+              @copy="handleCopyNode"
+              @delete="handleDeleteNode"
+            />
+          </template>
+
+          <!-- 條件分支節點 -->
+          <template #node-condition="nodeProps">
+            <ConditionNode
+              v-bind="nodeProps"
+              @edit="handleEditNode"
               @copy="handleCopyNode"
               @delete="handleDeleteNode"
             />

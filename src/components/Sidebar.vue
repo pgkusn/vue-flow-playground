@@ -33,6 +33,13 @@ const nodeTypes = [
     desc: '儲存與快取',
     iconClass: 'sidebar__node-icon--custom',
   },
+  {
+    type: 'condition',
+    icon: '🔀',
+    name: '條件節點',
+    desc: '分支與判斷',
+    iconClass: 'sidebar__node-icon--condition',
+  },
 ]
 
 /**

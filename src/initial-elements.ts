@@ -90,12 +90,28 @@ export const initialNodes: Node[] = [
     },
   },
 
+  // 條件分支節點
+  {
+    id: 'condition-1',
+    type: 'condition',
+    label: '資料驗證',
+    position: { x: 950, y: 130 },
+    data: {
+      category: 'condition',
+      icon: '🔀',
+      title: '資料驗證',
+      description: '資料筆數 > 0',
+      condition: 'data.length > 0',
+      status: '運行中',
+    },
+  },
+
   // 輸出節點
   {
     id: 'output-1',
     type: 'custom',
     label: '資料庫',
-    position: { x: 950, y: 80 },
+    position: { x: 1280, y: 40 },
     data: {
       category: 'output',
       icon: '🗄️',
@@ -108,7 +124,7 @@ export const initialNodes: Node[] = [
     id: 'output-2',
     type: 'custom',
     label: '通知',
-    position: { x: 950, y: 300 },
+    position: { x: 1280, y: 280 },
     data: {
       category: 'output',
       icon: '📨',
@@ -123,6 +139,7 @@ export const initialNodes: Node[] = [
  * 初始邊（連線）資料
  */
 export const initialEdges: Edge[] = [
+  // 輸入 → 處理
   {
     id: 'e-input1-process1',
     source: 'input-1',
@@ -149,6 +166,8 @@ export const initialEdges: Edge[] = [
     style: { stroke: '#34d399' },
     markerEnd: MarkerType.ArrowClosed,
   },
+
+  // 處理 → 資料
   {
     id: 'e-process1-data1',
     source: 'process-1',
@@ -174,21 +193,47 @@ export const initialEdges: Edge[] = [
     style: { stroke: '#818cf8' },
     markerEnd: MarkerType.ArrowClosed,
   },
+
+  // 資料 → 條件分支
   {
-    id: 'e-data1-output1',
+    id: 'e-data1-condition1',
     source: 'data-1',
+    target: 'condition-1',
+    type: 'deletable',
+    animated: true,
+    style: { stroke: '#fbbf24' },
+    markerEnd: MarkerType.ArrowClosed,
+  },
+
+  // 條件分支 → 輸出 (Yes: 寫入資料庫)
+  {
+    id: 'e-condition1-output1',
+    source: 'condition-1',
+    sourceHandle: 'yes',
     target: 'output-1',
     type: 'deletable',
     animated: true,
-    style: { stroke: '#fb7185' },
-    markerEnd: MarkerType.ArrowClosed,
+    label: '✓ Yes',
+    style: { stroke: '#34d399' },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: '#34d399',
+    },
   },
+
+  // 條件分支 → 輸出 (No: 發送通知)
   {
-    id: 'e-data1-output2',
-    source: 'data-1',
+    id: 'e-condition1-output2',
+    source: 'condition-1',
+    sourceHandle: 'no',
     target: 'output-2',
     type: 'deletable',
+    label: '✗ No',
     style: { stroke: '#fb7185' },
-    markerEnd: MarkerType.ArrowClosed,
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: '#fb7185',
+    },
   },
 ]
+
