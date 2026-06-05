@@ -901,6 +901,13 @@ body {
 }
 
 /* Condition node handle 上色 */
+.condition-node__handle--yes,
+.condition-node__handle--no {
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease !important;
+}
+
 .condition-node__handle--yes {
   background: var(--accent-emerald) !important;
   border-color: rgba(52, 211, 153, 0.6) !important;
@@ -909,4 +916,45 @@ body {
 .condition-node__handle--no {
   background: var(--accent-rose) !important;
   border-color: rgba(251, 113, 133, 0.6) !important;
+}
+
+/* Handle hover 提示文字 */
+.condition-node__handle--yes::after,
+.condition-node__handle--no::after {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  backdrop-filter: blur(6px);
+}
+
+.condition-node__handle--yes::after {
+  content: 'Yes';
+  color: var(--accent-emerald);
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.condition-node__handle--no::after {
+  content: 'No';
+  color: var(--accent-rose);
+  background: rgba(251, 113, 133, 0.12);
+  border: 1px solid rgba(251, 113, 133, 0.25);
+}
+
+.condition-node__handle--yes:hover::after,
+.condition-node__handle--no:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
