@@ -38,12 +38,20 @@ function handleDelete() {
 </script>
 
 <template>
-  <!-- 基本路徑 -->
+  <!-- 基本路徑 + 標籤 -->
   <BaseEdge
     :id="id"
     :path="edgePath"
     :marker-end="markerEnd"
     :style="style"
+    :label="label"
+    :label-x="labelX"
+    :label-y="labelY"
+    :label-style="{ fill: style?.stroke ?? '#9898b8', fontSize: '11px', fontWeight: 700 }"
+    :label-show-bg="true"
+    :label-bg-style="{ fill: '#0a0a0f', fillOpacity: 0.85 }"
+    :label-bg-padding="[4, 8]"
+    :label-bg-border-radius="8"
     :class="{ 'vue-flow__edge-path--animated': animated }"
   />
 
@@ -73,9 +81,6 @@ function handleDelete() {
       @mouseenter="isHovered = true"
       @mouseleave="isHovered = false"
     >
-      <!-- 連線標籤文字（如 ✓ Yes / ✗ No） -->
-      <span v-if="label" class="edge-label-text">{{ label }}</span>
-
       <!-- 刪除按鈕 -->
       <button
         class="edge-delete-btn"
@@ -95,24 +100,6 @@ function handleDelete() {
 <style scoped>
 .edge-label-wrap {
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.edge-label-text {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary, #9898b8);
-  background: rgba(10, 10, 15, 0.85);
-  padding: 2px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(130, 140, 248, 0.15);
-  pointer-events: none;
-  user-select: none;
-  white-space: nowrap;
-  backdrop-filter: blur(4px);
 }
 
 .edge-delete-btn {
