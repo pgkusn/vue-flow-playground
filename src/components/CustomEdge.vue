@@ -62,10 +62,10 @@ function handleDelete() {
     @mouseleave="isHovered = false"
   />
 
-  <!-- 使用 EdgeLabelRenderer 在 DOM 層渲染刪除按鈕 -->
+  <!-- 使用 EdgeLabelRenderer 在 DOM 層渲染標籤與刪除按鈕 -->
   <EdgeLabelRenderer>
     <div
-      class="edge-delete-btn-wrap"
+      class="edge-label-wrap"
       :style="{
         transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
         pointerEvents: 'all',
@@ -73,6 +73,10 @@ function handleDelete() {
       @mouseenter="isHovered = true"
       @mouseleave="isHovered = false"
     >
+      <!-- 連線標籤文字（如 ✓ Yes / ✗ No） -->
+      <span v-if="label" class="edge-label-text">{{ label }}</span>
+
+      <!-- 刪除按鈕 -->
       <button
         class="edge-delete-btn"
         :class="{ 'edge-delete-btn--visible': isHovered || selected }"
@@ -89,8 +93,26 @@ function handleDelete() {
 </template>
 
 <style scoped>
-.edge-delete-btn-wrap {
+.edge-label-wrap {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.edge-label-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #9898b8);
+  background: rgba(10, 10, 15, 0.85);
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(130, 140, 248, 0.15);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
 }
 
 .edge-delete-btn {

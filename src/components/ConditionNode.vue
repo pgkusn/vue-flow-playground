@@ -98,7 +98,6 @@ const emit = defineEmits<{
       :style="{ top: '35%' }"
       class="condition-node__handle condition-node__handle--yes"
     />
-    <span class="condition-node__handle-label condition-node__handle-label--yes">Yes</span>
 
     <!-- 輸出 Handle: No 分支 (右下) -->
     <Handle
@@ -108,6 +107,5 @@ const emit = defineEmits<{
       :style="{ top: '65%' }"
       class="condition-node__handle condition-node__handle--no"
     />
-    <span class="condition-node__handle-label condition-node__handle-label--no">No</span>
   </div>
 </template>
