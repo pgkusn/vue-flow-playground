@@ -910,3 +910,24 @@ body {
   background: var(--accent-rose) !important;
   border-color: rgba(251, 113, 133, 0.6) !important;
 }
+
+/* Handle 旁的 Yes / No 文字標籤 */
+.condition-node__handle-label {
+  position: absolute;
+  right: -38px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.condition-node__handle-label--yes {
+  top: calc(35% - 7px);
+  color: var(--accent-emerald);
+}
+
+.condition-node__handle-label--no {
+  top: calc(65% - 7px);
+  color: var(--accent-rose);
+}
