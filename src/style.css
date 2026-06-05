@@ -606,6 +606,20 @@ body {
   animation: slideIn 0.3s ease-out;
 }
 
+.info-toast--error {
+  border-color: #fb7185;
+  background: linear-gradient(
+    180deg,
+    rgba(251, 113, 133, 0.12),
+    var(--bg-elevated)
+  );
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(251, 113, 133, 0.25);
+}
+
+.info-toast--error .info-toast__title {
+  color: #fb7185;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
