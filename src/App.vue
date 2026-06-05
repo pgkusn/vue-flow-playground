@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { VueFlow, useVueFlow } from "@vue-flow/core";
+import { VueFlow, useVueFlow, MarkerType } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
 import { Controls } from "@vue-flow/controls";
 import { MiniMap } from "@vue-flow/minimap";
@@ -47,15 +47,32 @@ const {
 
 /**
  * 當使用者連接兩個節點時
- * 自動建立一條 smoothstep 類型的動畫邊
+ * 自動建立一條動畫邊；若來源為條件節點的 yes/no Handle 則自動標註
  */
 onConnect((connection: Connection) => {
+  const handleId = connection.sourceHandle;
+
+  // 根據 sourceHandle 決定標籤與配色
+  const branchConfig: Record<string, { label: string; stroke: string }> = {
+    yes: { label: "✓ Yes", stroke: "#34d399" },
+    no:  { label: "✗ No",  stroke: "#fb7185" },
+  };
+  const branch = handleId ? branchConfig[handleId] : null;
+
   addEdges([
     {
       ...connection,
       type: "deletable",
       animated: true,
-      style: { stroke: "#818cf8" },
+      ...(branch
+        ? {
+            label: branch.label,
+            style: { stroke: branch.stroke },
+            markerEnd: { type: MarkerType.ArrowClosed, color: branch.stroke },
+          }
+        : {
+            style: { stroke: "#818cf8" },
+          }),
     },
   ]);
   showNotification(
