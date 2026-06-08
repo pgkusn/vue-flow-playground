@@ -1,81 +1,117 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
-import { VueFlow, useVueFlow, MarkerType } from "@vue-flow/core";
-import { Background } from "@vue-flow/background";
-import { Controls } from "@vue-flow/controls";
-import { MiniMap } from "@vue-flow/minimap";
-import type { Node, Edge, Connection } from "@vue-flow/core";
+import { ref, onMounted, onUnmounted } from 'vue'
+import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
+import type { Node, Edge, Connection } from '@vue-flow/core'
 
-import CustomNode from "./components/CustomNode.vue";
-import ConditionNode from "./components/ConditionNode.vue";
-import CustomEdge from "./components/CustomEdge.vue";
-import Sidebar from "./components/Sidebar.vue";
-import { initialNodes, initialEdges } from "./initial-elements";
-import { useHistory } from "./composables/useHistory";
-import { useDnD } from "./composables/useDnD";
+import CustomNode from './components/CustomNode.vue'
+import ConditionNode from './components/ConditionNode.vue'
+import CustomEdge from './components/CustomEdge.vue'
+import Sidebar from './components/Sidebar.vue'
+import { initialNodes, initialEdges } from './initial-elements'
+import { useHistory } from './composables/useHistory'
+import { useDnD } from './composables/useDnD'
 
 // =========================================
 // 狀態管理
 // =========================================
 
-const nodes = ref<Node[]>(initialNodes);
-const edges = ref<Edge[]>(initialEdges);
+const nodes = ref<Node[]>(initialNodes)
+const edges = ref<Edge[]>(initialEdges)
 
 /** 節點 ID 計數器 */
-let nodeId = 100;
+let nodeId = 100
 
 // =========================================
 // Undo / Redo 歷史管理
 // =========================================
 
-const { canUndo, canRedo, undo, redo, init: initHistory, reset: resetHistory } = useHistory();
+const { canUndo, canRedo, undo, redo, init: initHistory, reset: resetHistory } = useHistory()
 
 /** Toast 通知 */
-const showToast = ref(true);
-const toastMessage = ref({
-  title: "歡迎使用 Vue Flow Playground 👋",
+const showToast = ref(true)
+const toastMessage = ref<{ title: string; content: string; type: 'info' | 'error' }>({
+  title: '歡迎使用 Vue Flow Playground 👋',
   content:
-    "這是一個資料處理管線的範例。你可以拖曳左側面板的節點到畫布上、建立連線、或移動現有節點。",
-});
+    '這是一個資料處理管線的範例。你可以拖曳左側面板的節點到畫布上、建立連線、或移動現有節點。',
+  type: 'info',
+})
+
+// =========================================
+// 連線規則 (禁止互連的節點類別)
+// =========================================
+
+/**
+ * 禁止的連線規則：來源類別 → 目標類別
+ * 例如「資料輸入」不可直連「輸出 / 寫入資料庫」，必須先經過處理節點。
+ */
+const forbiddenConnections: { source: string; target: string; message: string }[] = [
+  {
+    source: 'input',
+    target: 'output',
+    message: '輸入節點不能直接連接到輸出節點，請先經過處理節點。',
+  },
+]
+
+/**
+ * 驗證連線是否合法
+ * @returns 若違反規則回傳錯誤訊息字串，否則回傳 null
+ */
+function validateConnection(connection: Connection): string | null {
+  const sourceNode = findNode(connection.source)
+  const targetNode = findNode(connection.target)
+  if (!sourceNode || !targetNode) return null
+
+  const sourceCategory = sourceNode.data?.category
+  const targetCategory = targetNode.data?.category
+
+  const rule = forbiddenConnections.find(
+    r => r.source === sourceCategory && r.target === targetCategory,
+  )
+  return rule ? rule.message : null
+}
 
 // =========================================
 // useVueFlow Composable
 // =========================================
 
-const {
-  onConnect,
-  addEdges,
-  addNodes,
-  removeNodes,
-  findNode,
-  fitView,
-} = useVueFlow();
+const { onConnect, addEdges, addNodes, removeNodes, findNode, project, vueFlowRef, fitView } =
+  useVueFlow()
 
 const {
   isDragOver,
   onDragOver,
   onDragLeave,
   onDrop: dndDrop,
-} = useDnD();
+} = useDnD()
 
 /**
  * 當使用者連接兩個節點時
  * 自動建立一條動畫邊；若來源為條件節點的 yes/no Handle 則自動標註
  */
 onConnect((connection: Connection) => {
-  const handleId = connection.sourceHandle;
+  // 連線前先驗證規則，違規則擋下並提示錯誤
+  const error = validateConnection(connection)
+  if (error) {
+    showNotification('無法建立連線 🚫', error, 'error')
+    return
+  }
+
+  const handleId = connection.sourceHandle
 
   // 根據 sourceHandle 決定標籤與配色
   const branchConfig: Record<string, { label: string; stroke: string }> = {
-    yes: { label: "✓ Yes", stroke: "#34d399" },
-    no:  { label: "✗ No",  stroke: "#fb7185" },
-  };
-  const branch = handleId ? branchConfig[handleId] : null;
+    yes: { label: '✓ Yes', stroke: '#34d399' },
+    no:  { label: '✗ No',  stroke: '#fb7185' },
+  }
+  const branch = handleId ? branchConfig[handleId] : null
 
   addEdges([
     {
       ...connection,
-      type: "deletable",
+      type: 'deletable',
       animated: true,
       ...(branch
         ? {
@@ -84,24 +120,21 @@ onConnect((connection: Connection) => {
             markerEnd: { type: MarkerType.ArrowClosed, color: branch.stroke },
           }
         : {
-            style: { stroke: "#818cf8" },
+            style: { stroke: '#818cf8' },
           }),
     },
-  ]);
-  showNotification(
-    "連線建立 ✅",
-    `${connection.source} → ${connection.target}`,
-  );
-});
+  ])
+  showNotification('連線建立 ✅', `${connection.source} → ${connection.target}`)
+})
 
 // =========================================
 // 拖放 (Drag & Drop) 處理
 // =========================================
 
 function handleDrop(event: DragEvent) {
-  const newNode = dndDrop(event);
+  const newNode = dndDrop(event)
   if (newNode) {
-    showNotification("節點新增 ✨", `已建立 ${newNode.data.title} (${newNode.id})`);
+    showNotification('節點新增 ✨', `已建立 ${newNode.data.title} (${newNode.id})`)
   }
 }
 
@@ -111,23 +144,23 @@ function handleDrop(event: DragEvent) {
 
 /** 適配畫面 */
 function handleFitView() {
-  fitView({ padding: 0.2, duration: 400 });
+  fitView({ padding: 0.2, duration: 400 })
 }
 
 /** 清除所有節點與邊 */
 function handleClear() {
-  nodes.value = [];
-  edges.value = [];
-  showNotification("已清空畫布 🗑️", "所有節點與連線已被移除");
+  nodes.value = []
+  edges.value = []
+  showNotification('已清空畫布 🗑️', '所有節點與連線已被移除')
 }
 
 /** 重置為初始狀態 */
 function handleReset() {
-  nodes.value = [...initialNodes];
-  edges.value = [...initialEdges];
-  resetHistory();
-  setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
-  showNotification("已重置 ↩️", "畫布已恢復為初始狀態");
+  nodes.value = [...initialNodes]
+  edges.value = [...initialEdges]
+  resetHistory()
+  setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
+  showNotification('已重置 ↩️', '畫布已恢復為初始狀態')
 }
 
 /** 匯出畫布資料 */
@@ -135,106 +168,106 @@ function handleExport() {
   const data = {
     nodes: nodes.value,
     edges: edges.value,
-  };
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "vue-flow-export.json";
-  a.click();
-  URL.revokeObjectURL(url);
-  showNotification("匯出成功 📦", "流程圖資料已儲存為 JSON 檔案");
+  }
+  const json = JSON.stringify(data, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'vue-flow-export.json'
+  a.click()
+  URL.revokeObjectURL(url)
+  showNotification('匯出成功 📦', '流程圖資料已儲存為 JSON 檔案')
 }
 
 // =========================================
 // Toast 通知
 // =========================================
 
-let toastTimer: ReturnType<typeof setTimeout> | null = null;
+let toastTimer: ReturnType<typeof setTimeout> | null = null
 
-function showNotification(title: string, content: string) {
-  toastMessage.value = { title, content };
-  showToast.value = true;
+function showNotification(title: string, content: string, type: 'info' | 'error' = 'info') {
+  toastMessage.value = { title, content, type }
+  showToast.value = true
 
-  if (toastTimer) clearTimeout(toastTimer);
+  if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => {
-    showToast.value = false;
-  }, 4000);
+    showToast.value = false
+  }, 4000)
 }
 
 function closeToast() {
-  showToast.value = false;
-  if (toastTimer) clearTimeout(toastTimer);
+  showToast.value = false
+  if (toastTimer) clearTimeout(toastTimer)
 }
 
 // =========================================
 // 節點編輯 Modal 狀態與邏輯
 // =========================================
 
-const isEditModalOpen = ref(false);
-const editingNode = ref<{ id: string; label: string; data: any } | null>(null);
+const isEditModalOpen = ref(false)
+const editingNode = ref<{ id: string; label: string; data: any } | null>(null)
 
 function handleEditNode(payload: { id: string; label: string; data: any }) {
   // 深度拷貝 payload 避免編輯時即時修改畫布上原有的資料 (以支持取消功能)
-  editingNode.value = JSON.parse(JSON.stringify(payload));
-  isEditModalOpen.value = true;
+  editingNode.value = JSON.parse(JSON.stringify(payload))
+  isEditModalOpen.value = true
 }
 
 function closeEditModal() {
-  isEditModalOpen.value = false;
-  editingNode.value = null;
+  isEditModalOpen.value = false
+  editingNode.value = null
 }
 
 function saveNodeChanges() {
-  if (!editingNode.value) return;
+  if (!editingNode.value) return
 
-  const nodeIndex = nodes.value.findIndex((n) => n.id === editingNode.value!.id);
+  const nodeIndex = nodes.value.findIndex(n => n.id === editingNode.value!.id)
   if (nodeIndex !== -1) {
-    const targetNode = nodes.value[nodeIndex];
+    const targetNode = nodes.value[nodeIndex]
     // 更新資料
-    targetNode.data.title = editingNode.value.data.title;
-    targetNode.data.description = editingNode.value.data.description;
-    targetNode.data.status = editingNode.value.data.status;
-    targetNode.label = editingNode.value.data.title; // 同步更新 label
-    
-    closeEditModal();
-    showNotification("節點已更新 ⚙️", `節點 "${editingNode.value.data.title}" 的設定已儲存！`);
+    targetNode.data.title = editingNode.value.data.title
+    targetNode.data.description = editingNode.value.data.description
+    targetNode.data.status = editingNode.value.data.status
+    targetNode.label = editingNode.value.data.title // 同步更新 label
+
+    closeEditModal()
+    showNotification('節點已更新 ⚙️', `節點 "${editingNode.value.data.title}" 的設定已儲存！`)
   }
 }
 
 function handleCopyNode(id: string) {
-  const targetNode = findNode(id);
-  if (!targetNode) return;
+  const targetNode = findNode(id)
+  if (!targetNode) return
 
   // 深度拷貝節點以避免參照污染
-  const copiedNode = JSON.parse(JSON.stringify(targetNode));
-  
+  const copiedNode = JSON.parse(JSON.stringify(targetNode))
+
   // 生成新 ID 與微調位置以免與原節點重合
-  const newId = `node-${++nodeId}`;
-  copiedNode.id = newId;
+  const newId = `node-${++nodeId}`
+  copiedNode.id = newId
   copiedNode.position = {
     x: copiedNode.position.x + 50,
     y: copiedNode.position.y + 50,
-  };
-  
-  copiedNode.data.title = `${copiedNode.data.title} (複製品)`;
-  copiedNode.label = copiedNode.data.title;
-  
-  addNodes([copiedNode]);
-  showNotification("複製成功 📋", `已複製產生 "${copiedNode.data.title}"`);
+  }
+
+  copiedNode.data.title = `${copiedNode.data.title} (複製品)`
+  copiedNode.label = copiedNode.data.title
+
+  addNodes([copiedNode])
+  showNotification('複製成功 📋', `已複製產生 "${copiedNode.data.title}"`)
 }
 
 function handleDeleteNode(id: string) {
-  const targetNode = findNode(id);
-  if (!targetNode) return;
+  const targetNode = findNode(id)
+  if (!targetNode) return
 
-  const nodeTitle = targetNode.data.title;
+  const nodeTitle = targetNode.data.title
 
   // 使用 Vue Flow composable 的 removeNodes，會自動處理節點與相關連線的刪除
-  removeNodes(id);
-  
-  showNotification("刪除成功 🗑️", `已刪除節點 "${nodeTitle}"`);
+  removeNodes(id)
+
+  showNotification('刪除成功 🗑️', `已刪除節點 "${nodeTitle}"`)
 }
 
 // =========================================
@@ -242,25 +275,25 @@ function handleDeleteNode(id: string) {
 // =========================================
 
 function handleKeyDown(e: KeyboardEvent) {
-  const isMeta = e.metaKey || e.ctrlKey;
+  const isMeta = e.metaKey || e.ctrlKey
   if (isMeta && e.key === 'z' && !e.shiftKey) {
-    e.preventDefault();
-    undo();
+    e.preventDefault()
+    undo()
   } else if (isMeta && e.key === 'z' && e.shiftKey) {
-    e.preventDefault();
-    redo();
+    e.preventDefault()
+    redo()
   } else if (isMeta && e.key === 'y') {
-    e.preventDefault();
-    redo();
+    e.preventDefault()
+    redo()
   }
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keydown', handleKeyDown)
   // 初始化歷史基準快照
-  initHistory();
-});
-onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
+  initHistory()
+})
+onUnmounted(() => window.removeEventListener('keydown', handleKeyDown))
 </script>
 
 <template>
@@ -310,20 +343,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
           </button>
         </div>
 
-        <button class="btn" @click="handleFitView" title="適配畫面">
-          🔍 適配
-        </button>
-        <button
-          class="btn btn--primary"
-          @click="handleExport"
-          title="匯出 JSON"
-        >
-          📦 匯出
-        </button>
+        <button class="btn" @click="handleFitView" title="適配畫面">🔍 適配</button>
+        <button class="btn btn--primary" @click="handleExport" title="匯出 JSON">📦 匯出</button>
         <button class="btn" @click="handleReset" title="重置">↩️ 重置</button>
-        <button class="btn btn--danger" @click="handleClear" title="清空">
-          🗑️ 清空
-        </button>
+        <button class="btn btn--danger" @click="handleClear" title="清空">🗑️ 清空</button>
       </div>
     </header>
 
@@ -344,9 +367,9 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
         >
           <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
           <template #node-custom="nodeProps">
-            <CustomNode 
-              v-bind="nodeProps" 
-              @edit="handleEditNode" 
+            <CustomNode
+              v-bind="nodeProps"
+              @edit="handleEditNode"
               @copy="handleCopyNode"
               @delete="handleDeleteNode"
             />
@@ -378,7 +401,11 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 
         <!-- Toast 通知 -->
         <Transition name="toast">
-          <div v-if="showToast" class="info-toast">
+          <div
+            v-if="showToast"
+            class="info-toast"
+            :class="{ 'info-toast--error': toastMessage.type === 'error' }"
+          >
             <button class="info-toast__close" @click="closeToast">✕</button>
             <div class="info-toast__title">{{ toastMessage.title }}</div>
             <div class="info-toast__content">{{ toastMessage.content }}</div>
@@ -399,12 +426,22 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
           <main class="modal-card__body">
             <div class="form-group">
               <label class="form-label">節點標題</label>
-              <input v-model="editingNode.data.title" type="text" class="form-input" placeholder="請輸入節點名稱">
+              <input
+                v-model="editingNode.data.title"
+                type="text"
+                class="form-input"
+                placeholder="請輸入節點名稱"
+              />
             </div>
 
             <div class="form-group">
               <label class="form-label">節點描述</label>
-              <textarea v-model="editingNode.data.description" rows="3" class="form-input form-input--textarea" placeholder="請輸入節點的描述資訊"></textarea>
+              <textarea
+                v-model="editingNode.data.description"
+                rows="3"
+                class="form-input form-input--textarea"
+                placeholder="請輸入節點的描述資訊"
+              ></textarea>
             </div>
 
             <div class="form-group">
@@ -466,7 +503,9 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
   border-radius: var(--radius-lg);
   width: 450px;
   max-width: 90%;
-  box-shadow: var(--shadow-lg), 0 0 30px rgba(129, 140, 248, 0.1);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 30px rgba(129, 140, 248, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -567,19 +606,23 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 }
 
 /* Modal 過渡動畫 */
-.modal-enter-active, .modal-leave-active {
+.modal-enter-active,
+.modal-leave-active {
   transition: opacity 0.25s ease;
 }
 
-.modal-enter-from, .modal-leave-to {
+.modal-enter-from,
+.modal-leave-to {
   opacity: 0;
 }
 
-.modal-enter-active .modal-card, .modal-leave-active .modal-card {
+.modal-enter-active .modal-card,
+.modal-leave-active .modal-card {
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-enter-from .modal-card, .modal-leave-to .modal-card {
+.modal-enter-from .modal-card,
+.modal-leave-to .modal-card {
   transform: scale(0.9) translateY(10px);
 }
 </style>
