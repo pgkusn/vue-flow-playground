@@ -1,0 +1,110 @@
+{
+  "id": "6a2bd719d0930c8ace005622",
+  "title": "完整功能測試行銷旅程",
+  "startAt": "2026-06-12 18:00:00",
+  "endAt": "2026-06-30 18:00:00",
+  "status": "draft",
+  "settings": {
+    "maxParticipationPerUser": 5,
+    "participationIntervalHours": 12,
+    "maxTotalMessages": 1000
+  },
+  "nodes": [
+    {
+      "id": "6a2bd7cccc3c0700ca0b29c2",
+      "branches": [
+        {
+          "type": "default",
+          "targetNodeId": "6a2bd7cccc3c0700ca0b29c3"
+        }
+      ],
+      "config": {
+        "entryType": "trigger",
+        "trigger": {
+          "type": "tag",
+          "guids": ["dummy-tag-guid-1"]
+        }
+      },
+      "title": "事件觸發起點",
+      "type": "entry"
+    },
+    {
+      "id": "6a2bd7cccc3c0700ca0b29c3",
+      "branches": [
+        {
+          "type": "default",
+          "targetNodeId": "6a2bd7cccc3c0700ca0b29c4"
+        }
+      ],
+      "config": {
+        "waitType": "duration",
+        "minutes": 10
+      },
+      "title": "等待時間",
+      "type": "wait"
+    },
+    {
+      "id": "6a2bd7cccc3c0700ca0b29c4",
+      "branches": [
+        {
+          "type": "default",
+          "targetNodeId": "6a2bd7cccc3c0700ca0b29c5"
+        }
+      ],
+      "config": {
+        "flowId": 5792,
+        "actions": [
+          {
+            "type": "addTags",
+            "params": {
+              "tags": ["測試自動標籤"],
+              "fromId": -1,
+              "fromTypeId": 1
+            }
+          }
+        ]
+      },
+      "title": "給予標籤動作",
+      "type": "action"
+    },
+    {
+      "id": "6a2bd7cccc3c0700ca0b29c5",
+      "branches": [
+        {
+          "type": "0",
+          "targetNodeId": "6a2bd7cdcc3c0700ca0b29c6"
+        },
+        {
+          "type": "else",
+          "targetNodeId": "6a2bd7cdcc3c0700ca0b29c7"
+        }
+      ],
+      "config": {
+        "conditionType": "hasTag",
+        "targets": ["target-tag-guid-xyz"],
+        "rules": [
+          {
+            "operator": "and",
+            "value": "yes"
+          }
+        ]
+      },
+      "title": "檢查是否擁有特定標籤",
+      "type": "condition"
+    },
+    {
+      "id": "6a2bd7cdcc3c0700ca0b29c6",
+      "branches": [],
+      "config": [],
+      "title": "成功路徑終點",
+      "type": "end"
+    },
+    {
+      "id": "6a2bd7cdcc3c0700ca0b29c7",
+      "branches": [],
+      "config": [],
+      "title": "失敗路徑終點",
+      "type": "end"
+    }
+  ]
+}

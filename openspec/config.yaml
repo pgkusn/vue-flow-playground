@@ -1,0 +1,36 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+context: |
+  專案：Vue Flow 節點式流程圖編輯器。
+  領域：LINE 行銷自動化「旅程」(journey)——起點(entry) 觸發後經過 等待(wait)、
+        動作(action)、條件分流(condition)，最終 結束(end)。節點資料結構（type/config/branches）
+        完整定義於 docs/api.md，畫布初始內容載自 public/data.json。
+  技術棧：Vue 3 <script setup> + TypeScript + Vite 8 + Tailwind CSS v4
+        （透過 @tailwindcss/vite plugin，無 tailwind.config.js）。
+  核心套件：@vue-flow/core（含 background/controls/minimap 外掛）、@dagrejs/dagre（自動排版）、
+        @element-plus/icons-vue（icon）。
+  架構：data.json → useJourneyData(loadJourney/toFlowNode/toFlowEdges) → useJourneyLayout(dagre LR 排版)
+        → App.vue 的 nodes/edges ref → JourneyCanvas <VueFlow>。
+        API entry/wait/action/end 映射到 Vue Flow type 'journey'，condition 映射到 'condition'。
+        edge 一律為 'deletable' 型別。undo/redo 由 useHistory（toObject/fromObject 快照）提供。
+  慣例：元件 DOM 用 Tailwind utility；覆寫 Vue Flow 第三方 DOM 用非 scoped 全域 CSS + !important，
+        以元件根 class 為前綴並隨元件移動；元件須可獨立移植（設計變數複製進元件根、不依賴全域 :root）。
+  指令：npm run dev / build（內含 vue-tsc -b 型別檢查）/ preview。無 lint 與測試設定。
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

@@ -1,111 +1,72 @@
 <script setup lang="ts">
+import type { JourneyNodeData } from '../composables/useJourneyData'
 import { Handle, Position } from '@vue-flow/core'
-
-interface ConditionData {
-  category: 'condition'
-  icon: string
-  title: string
-  description: string
-  status: string
-  /** 條件表達式（顯示在節點上） */
-  condition: string
-}
+import { Share, Setting, CopyDocument, Delete } from '@element-plus/icons-vue'
 
 defineProps<{
   id: string
-  data: ConditionData
+  data: JourneyNodeData
 }>()
 
 const emit = defineEmits<{
-  (e: 'edit', payload: { id: string; label: string; data: ConditionData }): void
+  (e: 'edit', payload: { id: string; label: string; data: JourneyNodeData }): void
   (e: 'copy', id: string): void
   (e: 'delete', id: string): void
 }>()
+
+/** 連線點：8px 圓點、白邊（取自設計稿 dot-s / Dots） */
+const targetHandleStyle = { width: '8px', height: '8px', background: '#4b5563', border: '1px solid #ffffff' }
+const yesHandleStyle = { top: '32%', width: '8px', height: '8px', background: '#439e28', border: '1px solid #ffffff' }
+const noHandleStyle = { top: '68%', width: '8px', height: '8px', background: '#ef4444', border: '1px solid #ffffff' }
 </script>
 
 <template>
-  <div class="condition-node">
+  <div class="group relative w-40 rounded-lg border border-[#d4d7de] bg-white shadow-sm transition hover:border-[#dc2626] hover:shadow-md">
+    <!-- hover 動作列：bottom-full 緊貼卡片上緣，pb-2 為透明橋接區，使 hover 命中區連續不中斷 -->
+    <div
+      class="pointer-events-none absolute right-0 bottom-full flex gap-1.5 pb-2 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"
+    >
+      <button
+        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-slate-50"
+        title="設定"
+        @click.stop="emit('edit', { id, label: data.title, data })"
+      >
+        <Setting class="h-3.5 w-3.5" />
+      </button>
+      <button
+        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-slate-50"
+        title="複製"
+        @click.stop="emit('copy', id)"
+      >
+        <CopyDocument class="h-3.5 w-3.5" />
+      </button>
+      <button
+        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#f56c6c] shadow-md transition hover:bg-red-50"
+        title="刪除"
+        @click.stop="emit('delete', id)"
+      >
+        <Delete class="h-3.5 w-3.5" />
+      </button>
+    </div>
+
     <!-- 輸入 Handle -->
-    <Handle type="target" :position="Position.Left" class="condition-node__handle" />
+    <Handle type="target" :position="Position.Left" :style="targetHandleStyle" />
 
-    <!-- 菱形裝飾背景 -->
-    <div class="condition-node__diamond">
-      <svg viewBox="0 0 120 120" class="condition-node__diamond-svg">
-        <polygon points="60,4 116,60 60,116 4,60" />
-      </svg>
-    </div>
-
-    <!-- 節點內容 -->
-    <div class="condition-node__content">
-      <!-- 標題列 -->
-      <div class="condition-node__header">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span class="condition-node__icon">{{ data.icon }}</span>
-          <span class="condition-node__title">{{ data.title }}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 4px;">
-          <button
-            class="condition-node__action-btn"
-            title="編輯節點"
-            @click.stop="emit('edit', { id, label: data.title, data })"
-          >⚙️</button>
-          <button
-            class="condition-node__action-btn"
-            title="複製節點"
-            @click.stop="emit('copy', id)"
-          >📋</button>
-          <button
-            class="condition-node__action-btn condition-node__action-btn--danger"
-            title="刪除節點"
-            @click.stop="emit('delete', id)"
-          >🗑️</button>
-        </div>
+    <div class="flex items-center gap-1.5 p-3">
+      <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#dc2626]">
+        <Share class="h-3.5 w-3.5 text-white" />
       </div>
-
-      <!-- 條件表達式 -->
-      <div class="condition-node__condition">
-        <span class="condition-node__condition-label">IF</span>
-        <code class="condition-node__condition-expr">{{ data.condition || data.description }}</code>
-      </div>
-
-      <!-- 分支標籤 -->
-      <div class="condition-node__branches">
-        <div class="condition-node__branch condition-node__branch--yes">
-          <span class="condition-node__branch-dot condition-node__branch-dot--yes"></span>
-          Yes / True
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-sm leading-normal text-[#303133]">{{ data.title }}</div>
+        <div class="mt-1 truncate text-xs leading-none text-[#909399]" :title="data.description">
+          {{ data.description }}
         </div>
-        <div class="condition-node__branch condition-node__branch--no">
-          <span class="condition-node__branch-dot condition-node__branch-dot--no"></span>
-          No / False
-        </div>
-      </div>
-
-      <!-- 底部狀態 -->
-      <div class="condition-node__footer">
-        <div class="condition-node__status">
-          <span class="custom-node__status-dot"></span>
-          {{ data.status }}
-        </div>
-        <span style="font-size: 10px; color: var(--text-muted);">ID: {{ id }}</span>
       </div>
     </div>
 
-    <!-- 輸出 Handle: Yes 分支 (右上) -->
-    <Handle
-      id="yes"
-      type="source"
-      :position="Position.Right"
-      :style="{ top: '35%' }"
-      class="condition-node__handle condition-node__handle--yes"
-    />
-
-    <!-- 輸出 Handle: No 分支 (右下) -->
-    <Handle
-      id="no"
-      type="source"
-      :position="Position.Right"
-      :style="{ top: '65%' }"
-      class="condition-node__handle condition-node__handle--no"
-    />
+    <!-- 輸出 Handle：Yes（綠，上）對應 branch 0 -->
+    <Handle id="yes" type="source" :position="Position.Right" :style="yesHandleStyle" />
+    <!-- 輸出 Handle：No（紅，下）對應 branch else -->
+    <Handle id="no" type="source" :position="Position.Right" :style="noHandleStyle" />
   </div>
 </template>

@@ -9,16 +9,15 @@
 
 ## 📖 專案簡介
 
-此專案是一個 **Vue Flow** 的完整範例應用，展示如何使用 `@vue-flow/core` 建立節點式（node-based）互動流程圖。範例以「**資料處理管線**」為主題，包含以下功能：
+此專案是一個 **Vue Flow** 的完整範例應用，展示如何使用 `@vue-flow/core` 建立節點式（node-based）互動流程圖。範例以「**LINE 行銷自動化旅程**」為主題（起點 → 等待 → 動作 → 條件分流 → 結束），畫布初始內容載自 `public/data.json`（資料結構見 `docs/api.md`），包含以下功能：
 
-- ✅ 自定義節點元件（Custom Nodes）
+- ✅ 自定義節點元件（一般節點 / 判斷節點）
+- ✅ 從 data.json 載入並以 dagre 自動排版
 - ✅ 拖放新增節點（Drag & Drop）
-- ✅ 自動連線建立
-- ✅ 小地圖（MiniMap）
-- ✅ 縮放控制按鈕（Controls）
-- ✅ 背景網格（Background）
-- ✅ 匯出流程圖為 JSON
-- ✅ 深色主題設計
+- ✅ 自動連線建立與 Yes/No 分支
+- ✅ 自定義連線（hover 刪除）
+- ✅ undo / redo 歷史記錄
+- ✅ 小地圖（MiniMap）、縮放控制（Controls）、背景網格（Background）
 
 ---
 
@@ -51,15 +50,25 @@ npm run dev
 ```
 vue-flow-playground/
 ├── public/
-│   └── favicon.svg              # 網站圖示
+│   ├── data.json                # 旅程初始資料（畫布載入來源）
+│   ├── favicon.svg              # 網站圖示
+│   └── icons.svg                # icon sprite
 ├── src/
 │   ├── components/
-│   │   ├── CustomNode.vue       # 自定義節點元件
-│   │   └── Sidebar.vue          # 左側面板（拖曳節點 + 說明）
-│   ├── initial-elements.ts      # 初始節點與邊的資料定義
+│   │   ├── JourneyCanvas.vue    # Vue Flow 畫布容器
+│   │   ├── JourneyNode.vue      # 一般節點（entry/wait/action/end）
+│   │   ├── ConditionNode.vue    # 判斷節點（yes/no 兩輸出）
+│   │   ├── CustomEdge.vue       # 自定義連線（hover 刪除、Yes/No 標籤）
+│   │   └── Sidebar.vue          # 左側面板（拖曳新增節點）
+│   ├── composables/
+│   │   ├── useJourneyData.ts    # 載入 data.json 並轉成 nodes/edges
+│   │   ├── useJourneyLayout.ts  # dagre 自動排版（由左至右）
+│   │   ├── useDnD.ts            # 側邊欄拖曳新增節點
+│   │   └── useHistory.ts        # undo / redo 歷史快照
 │   ├── main.ts                  # 應用進入點 + CSS 匯入
 │   ├── style.css                # 全域樣式 + Vue Flow 主題覆寫
 │   └── App.vue                  # 主要應用元件
+├── docs/api.md                  # 旅程節點資料結構規格
 ├── index.html                   # HTML 入口
 ├── package.json
 ├── tsconfig.json
@@ -102,7 +111,7 @@ Vue Flow 提供三種內建節點：
 你也可以透過 **自定義節點** 來完全掌控外觀：
 
 ```vue
-<!-- CustomNode.vue -->
+<!-- JourneyNode.vue -->
 <script setup>
 import { Handle, Position } from '@vue-flow/core'
 defineProps(['id', 'data'])
@@ -117,18 +126,18 @@ defineProps(['id', 'data'])
 </template>
 ```
 
-然後直接在 VueFlow 元件中使用動態作用域插槽 `#node-<type>` 來渲染：
+然後直接在 VueFlow 元件中使用動態作用域插槽 `#node-<type>` 來渲染（本專案在 `JourneyCanvas.vue` 以 `#node-journey` / `#node-condition` 註冊）：
 
 ```vue
 <script setup>
-import CustomNode from './CustomNode.vue'
+import JourneyNode from './JourneyNode.vue'
 </script>
 
 <template>
   <VueFlow :nodes="nodes" :edges="edges">
     <!-- 使用動態插槽來渲染自定義節點 -->
-    <template #node-custom="nodeProps">
-      <CustomNode v-bind="nodeProps" />
+    <template #node-journey="nodeProps">
+      <JourneyNode v-bind="nodeProps" />
     </template>
   </VueFlow>
 </template>

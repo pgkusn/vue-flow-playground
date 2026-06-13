@@ -1,28 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
-import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
-import { MiniMap } from '@vue-flow/minimap'
-import type { Node, Edge, Connection } from '@vue-flow/core'
+import { ref, onMounted, nextTick } from 'vue'
+import { useVueFlow } from '@vue-flow/core'
+import type { Node, Edge } from '@vue-flow/core'
 
-import CustomNode from './components/CustomNode.vue'
-import ConditionNode from './components/ConditionNode.vue'
-import CustomEdge from './components/CustomEdge.vue'
+import JourneyCanvas from './components/JourneyCanvas.vue'
 import Sidebar from './components/Sidebar.vue'
-import { initialNodes, initialEdges } from './initial-elements'
+import { loadJourney } from './composables/useJourneyData'
 import { useHistory } from './composables/useHistory'
-import { useDnD } from './composables/useDnD'
+import { nextNodeId } from './composables/useNodeId'
 
 // =========================================
 // 狀態管理
 // =========================================
 
-const nodes = ref<Node[]>(initialNodes)
-const edges = ref<Edge[]>(initialEdges)
-
-/** 節點 ID 計數器 */
-let nodeId = 100
+const nodes = ref<Node[]>([])
+const edges = ref<Edge[]>([])
 
 // =========================================
 // Undo / Redo 歷史管理
@@ -30,175 +22,41 @@ let nodeId = 100
 
 const { canUndo, canRedo, undo, redo, init: initHistory, reset: resetHistory } = useHistory()
 
-/** Toast 通知 */
-const showToast = ref(true)
-const toastMessage = ref<{ title: string; content: string; type: 'info' | 'error' }>({
-  title: '歡迎使用 Vue Flow Playground 👋',
-  content:
-    '這是一個資料處理管線的範例。你可以拖曳左側面板的節點到畫布上、建立連線、或移動現有節點。',
-  type: 'info',
-})
-
-// =========================================
-// 連線規則 (禁止互連的節點類別)
-// =========================================
-
-/**
- * 禁止的連線規則：來源類別 → 目標類別
- * 例如「資料輸入」不可直連「輸出 / 寫入資料庫」，必須先經過處理節點。
- */
-const forbiddenConnections: { source: string; target: string; message: string }[] = [
-  {
-    source: 'input',
-    target: 'output',
-    message: '輸入節點不能直接連接到輸出節點，請先經過處理節點。',
-  },
-]
-
-/**
- * 驗證連線是否合法
- * @returns 若違反規則回傳錯誤訊息字串，否則回傳 null
- */
-function validateConnection(connection: Connection): string | null {
-  const sourceNode = findNode(connection.source)
-  const targetNode = findNode(connection.target)
-  if (!sourceNode || !targetNode) return null
-
-  const sourceCategory = sourceNode.data?.category
-  const targetCategory = targetNode.data?.category
-
-  const rule = forbiddenConnections.find(
-    r => r.source === sourceCategory && r.target === targetCategory,
-  )
-  return rule ? rule.message : null
-}
+/** 工具列按鈕共用 Tailwind 樣式 */
+const btnClass =
+  'inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded border border-[#dcdfe6] bg-white px-[15px] py-2 text-sm text-[#606266] transition-all hover:border-[#c6e2ff] hover:bg-[#ecf5ff] hover:text-[#409eff] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
 
 // =========================================
 // useVueFlow Composable
 // =========================================
 
-const { onConnect, addEdges, addNodes, removeNodes, findNode, project, vueFlowRef, fitView } =
-  useVueFlow()
-
-const {
-  isDragOver,
-  onDragOver,
-  onDragLeave,
-  onDrop: dndDrop,
-} = useDnD()
-
-/**
- * 當使用者連接兩個節點時
- * 自動建立一條動畫邊；若來源為條件節點的 yes/no Handle 則自動標註
- */
-onConnect((connection: Connection) => {
-  // 連線前先驗證規則，違規則擋下並提示錯誤
-  const error = validateConnection(connection)
-  if (error) {
-    showNotification('無法建立連線 🚫', error, 'error')
-    return
-  }
-
-  const handleId = connection.sourceHandle
-
-  // 根據 sourceHandle 決定標籤與配色
-  const branchConfig: Record<string, { label: string; stroke: string }> = {
-    yes: { label: '✓ Yes', stroke: '#34d399' },
-    no:  { label: '✗ No',  stroke: '#fb7185' },
-  }
-  const branch = handleId ? branchConfig[handleId] : null
-
-  addEdges([
-    {
-      ...connection,
-      type: 'deletable',
-      animated: true,
-      ...(branch
-        ? {
-            label: branch.label,
-            style: { stroke: branch.stroke },
-            markerEnd: { type: MarkerType.ArrowClosed, color: branch.stroke },
-          }
-        : {
-            style: { stroke: '#818cf8' },
-          }),
-    },
-  ])
-  showNotification('連線建立 ✅', `${connection.source} → ${connection.target}`)
-})
-
-// =========================================
-// 拖放 (Drag & Drop) 處理
-// =========================================
-
-function handleDrop(event: DragEvent) {
-  const newNode = dndDrop(event)
-  if (newNode) {
-    showNotification('節點新增 ✨', `已建立 ${newNode.data.title} (${newNode.id})`)
-  }
-}
+const { addNodes, removeNodes, findNode, fitView } = useVueFlow()
 
 // =========================================
 // 工具列功能
 // =========================================
 
-/** 適配畫面 */
-function handleFitView() {
-  fitView({ padding: 0.2, duration: 400 })
-}
-
-/** 清除所有節點與邊 */
-function handleClear() {
-  nodes.value = []
-  edges.value = []
-  showNotification('已清空畫布 🗑️', '所有節點與連線已被移除')
-}
-
-/** 重置為初始狀態 */
-function handleReset() {
-  nodes.value = [...initialNodes]
-  edges.value = [...initialEdges]
+/** 重置為初始狀態（重新載入 data.json） */
+async function handleReset() {
+  await loadJourneyData()
   resetHistory()
-  setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
-  showNotification('已重置 ↩️', '畫布已恢復為初始狀態')
 }
 
-/** 匯出畫布資料 */
-function handleExport() {
-  const data = {
-    nodes: nodes.value,
-    edges: edges.value,
+/**
+ * 載入 data.json 並設定畫布；失敗時清空畫布且不致整頁崩潰。
+ */
+async function loadJourneyData() {
+  try {
+    const result = await loadJourney()
+    nodes.value = result.nodes
+    edges.value = result.edges
+    await nextTick()
+    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
+  } catch (err) {
+    nodes.value = []
+    edges.value = []
+    console.error('[journey] 載入失敗：', err)
   }
-  const json = JSON.stringify(data, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'vue-flow-export.json'
-  a.click()
-  URL.revokeObjectURL(url)
-  showNotification('匯出成功 📦', '流程圖資料已儲存為 JSON 檔案')
-}
-
-// =========================================
-// Toast 通知
-// =========================================
-
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-
-function showNotification(title: string, content: string, type: 'info' | 'error' = 'info') {
-  toastMessage.value = { title, content, type }
-  showToast.value = true
-
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    showToast.value = false
-  }, 4000)
-}
-
-function closeToast() {
-  showToast.value = false
-  if (toastTimer) clearTimeout(toastTimer)
 }
 
 // =========================================
@@ -219,23 +77,6 @@ function closeEditModal() {
   editingNode.value = null
 }
 
-function saveNodeChanges() {
-  if (!editingNode.value) return
-
-  const nodeIndex = nodes.value.findIndex(n => n.id === editingNode.value!.id)
-  if (nodeIndex !== -1) {
-    const targetNode = nodes.value[nodeIndex]
-    // 更新資料
-    targetNode.data.title = editingNode.value.data.title
-    targetNode.data.description = editingNode.value.data.description
-    targetNode.data.status = editingNode.value.data.status
-    targetNode.label = editingNode.value.data.title // 同步更新 label
-
-    closeEditModal()
-    showNotification('節點已更新 ⚙️', `節點 "${editingNode.value.data.title}" 的設定已儲存！`)
-  }
-}
-
 function handleCopyNode(id: string) {
   const targetNode = findNode(id)
   if (!targetNode) return
@@ -244,8 +85,7 @@ function handleCopyNode(id: string) {
   const copiedNode = JSON.parse(JSON.stringify(targetNode))
 
   // 生成新 ID 與微調位置以免與原節點重合
-  const newId = `node-${++nodeId}`
-  copiedNode.id = newId
+  copiedNode.id = nextNodeId()
   copiedNode.position = {
     x: copiedNode.position.x + 50,
     y: copiedNode.position.y + 50,
@@ -255,210 +95,93 @@ function handleCopyNode(id: string) {
   copiedNode.label = copiedNode.data.title
 
   addNodes([copiedNode])
-  showNotification('複製成功 📋', `已複製產生 "${copiedNode.data.title}"`)
 }
 
 function handleDeleteNode(id: string) {
   const targetNode = findNode(id)
   if (!targetNode) return
 
-  const nodeTitle = targetNode.data.title
-
   // 使用 Vue Flow composable 的 removeNodes，會自動處理節點與相關連線的刪除
   removeNodes(id)
-
-  showNotification('刪除成功 🗑️', `已刪除節點 "${nodeTitle}"`)
 }
 
-// =========================================
-// 鍵盤快捷鍵
-// =========================================
-
-function handleKeyDown(e: KeyboardEvent) {
-  const isMeta = e.metaKey || e.ctrlKey
-  if (isMeta && e.key === 'z' && !e.shiftKey) {
-    e.preventDefault()
-    undo()
-  } else if (isMeta && e.key === 'z' && e.shiftKey) {
-    e.preventDefault()
-    redo()
-  } else if (isMeta && e.key === 'y') {
-    e.preventDefault()
-    redo()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
+onMounted(async () => {
+  await loadJourneyData()
   // 初始化歷史基準快照
   initHistory()
 })
-onUnmounted(() => window.removeEventListener('keydown', handleKeyDown))
 </script>
 
 <template>
   <div id="vue-flow-app">
     <!-- 頂部導覽列 -->
-    <header class="app-header">
-      <div class="app-header__logo">
-        <div class="app-header__logo-icon">⬡</div>
+    <header
+      class="z-10 flex shrink-0 items-center justify-between bg-white px-6 py-3.5 shadow-[0_0_6px_rgba(0,0,0,0.12)]"
+    >
+      <div class="flex items-center gap-2.5">
+        <div
+          class="flex h-7 w-7 items-center justify-center rounded-md bg-[linear-gradient(135deg,#818cf8_0%,#a78bfa_50%,#c084fc_100%)] text-sm"
+        >
+          ⬡
+        </div>
         <div>
-          <div class="app-header__title">Vue Flow Playground</div>
-          <div class="app-header__subtitle">互動式流程圖編輯器</div>
+          <div class="app-header__title text-[15px] font-semibold tracking-[-0.02em]">
+            Vue Flow Playground
+          </div>
+          <div class="text-[11px] font-[JetBrains_Mono,'Fira_Code',monospace] text-[#909399]">
+            互動式流程圖編輯器
+          </div>
         </div>
       </div>
 
-      <div class="app-header__actions">
-        <!-- 狀態列 -->
-        <div class="stats-bar">
-          <div class="stats-bar__item">
-            <span class="stats-bar__dot stats-bar__dot--nodes"></span>
-            {{ nodes.length }} 節點
-          </div>
-          <div class="stats-bar__item">
-            <span class="stats-bar__dot stats-bar__dot--edges"></span>
-            {{ edges.length }} 連線
-          </div>
-        </div>
-
+      <div class="flex items-center gap-2">
         <!-- Undo / Redo -->
-        <div class="btn-group">
-          <button
-            class="btn"
-            :class="{ 'btn--disabled': !canUndo }"
-            :disabled="!canUndo"
-            @click="undo"
-            title="上一步 (⌘Z)"
-          >
+        <div class="btn-group inline-flex">
+          <button :class="btnClass" :disabled="!canUndo" @click="undo" title="上一步 (⌘Z)">
             ↩️ 上一步
           </button>
-          <button
-            class="btn"
-            :class="{ 'btn--disabled': !canRedo }"
-            :disabled="!canRedo"
-            @click="redo"
-            title="下一步 (⌘⇧Z)"
-          >
+          <button :class="btnClass" :disabled="!canRedo" @click="redo" title="下一步 (⌘⇧Z)">
             ↪️ 下一步
           </button>
         </div>
 
-        <button class="btn" @click="handleFitView" title="適配畫面">🔍 適配</button>
-        <button class="btn btn--primary" @click="handleExport" title="匯出 JSON">📦 匯出</button>
-        <button class="btn" @click="handleReset" title="重置">↩️ 重置</button>
-        <button class="btn btn--danger" @click="handleClear" title="清空">🗑️ 清空</button>
+        <button :class="btnClass" @click="handleReset" title="重置">↩️ 重置</button>
       </div>
     </header>
 
     <!-- 主要佈局 -->
-    <div class="app-layout">
+    <div class="flex flex-1 overflow-hidden">
       <!-- 左側面板 -->
       <Sidebar />
 
       <!-- 畫布區域 -->
-      <div class="canvas-wrapper" :class="{ 'canvas-wrapper--drag-over': isDragOver }" @dragover="onDragOver" @dragleave="onDragLeave" @drop="handleDrop">
-        <VueFlow
-          :nodes
-          :edges
-          :min-zoom="0.2"
-          :max-zoom="4"
-          fit-view-on-init
-          :default-edge-options="{ type: 'deletable' }"
-        >
-          <!-- 使用動態作用域插槽 #node-<type> 來渲染自定義節點 -->
-          <template #node-custom="nodeProps">
-            <CustomNode
-              v-bind="nodeProps"
-              @edit="handleEditNode"
-              @copy="handleCopyNode"
-              @delete="handleDeleteNode"
-            />
-          </template>
-
-          <!-- 條件分支節點 -->
-          <template #node-condition="nodeProps">
-            <ConditionNode
-              v-bind="nodeProps"
-              @edit="handleEditNode"
-              @copy="handleCopyNode"
-              @delete="handleDeleteNode"
-            />
-          </template>
-
-          <!-- 使用動態作用域插槽 #edge-<type> 來渲染自定義 Edge -->
-          <template #edge-deletable="edgeProps">
-            <CustomEdge v-bind="edgeProps" />
-          </template>
-
-          <Background :gap="20" :size="1" />
-
-          <!-- 控制按鈕 -->
-          <Controls />
-
-          <!-- 小地圖 -->
-          <MiniMap pannable zoomable />
-        </VueFlow>
-
-        <!-- Toast 通知 -->
-        <Transition name="toast">
-          <div
-            v-if="showToast"
-            class="info-toast"
-            :class="{ 'info-toast--error': toastMessage.type === 'error' }"
-          >
-            <button class="info-toast__close" @click="closeToast">✕</button>
-            <div class="info-toast__title">{{ toastMessage.title }}</div>
-            <div class="info-toast__content">{{ toastMessage.content }}</div>
-          </div>
-        </Transition>
-      </div>
+      <JourneyCanvas
+        :nodes
+        :edges
+        @edit="handleEditNode"
+        @copy="handleCopyNode"
+        @delete="handleDeleteNode"
+      />
     </div>
 
-    <!-- 節點資料編輯彈窗 Modal -->
+    <!-- 節點設定彈窗（此階段內容留空、白底） -->
     <Transition name="modal">
-      <div v-if="isEditModalOpen && editingNode" class="modal-overlay" @click.self="closeEditModal">
-        <div class="modal-card">
-          <header class="modal-card__header">
-            <h3 class="modal-card__title">⚙️ 編輯節點設定</h3>
-            <span class="modal-card__id">ID: {{ editingNode.id }}</span>
+      <div
+        v-if="isEditModalOpen && editingNode"
+        class="fixed inset-0 z-[999] flex items-center justify-center bg-[rgba(10,10,15,0.75)] backdrop-blur-sm"
+        @click.self="closeEditModal"
+      >
+        <div class="modal-card flex max-h-[90%] min-h-[240px] w-[450px] max-w-[90%] flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-2xl">
+          <header class="flex items-center justify-between border-b border-[#e2e8f0] px-[22px] py-[18px]">
+            <h3 class="m-0 text-[15px] font-bold text-[#0f172a]">節點設定</h3>
+            <button
+              class="cursor-pointer border-none bg-transparent p-1 text-[15px] leading-none text-slate-400 transition hover:text-[#0f172a]"
+              @click="closeEditModal"
+            >
+              ✕
+            </button>
           </header>
-
-          <main class="modal-card__body">
-            <div class="form-group">
-              <label class="form-label">節點標題</label>
-              <input
-                v-model="editingNode.data.title"
-                type="text"
-                class="form-input"
-                placeholder="請輸入節點名稱"
-              />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">節點描述</label>
-              <textarea
-                v-model="editingNode.data.description"
-                rows="3"
-                class="form-input form-input--textarea"
-                placeholder="請輸入節點的描述資訊"
-              ></textarea>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">運行狀態</label>
-              <select v-model="editingNode.data.status" class="form-input form-input--select">
-                <option value="已就緒">已就緒</option>
-                <option value="運行中">運行中</option>
-                <option value="等待中">等待中</option>
-                <option value="已停用">已停用</option>
-              </select>
-            </div>
-          </main>
-
-          <footer class="modal-card__footer">
-            <button class="btn btn--outline" @click="closeEditModal">取消</button>
-            <button class="btn btn--primary" @click="saveNodeChanges">儲存變更</button>
-          </footer>
+          <main class="flex-1 p-6"></main>
         </div>
       </div>
     </Transition>
@@ -466,15 +189,6 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown))
 </template>
 
 <style>
-/* Toast 過渡動畫 */
-.toast-enter-active {
-  animation: slideIn 0.3s ease-out;
-}
-
-.toast-leave-active {
-  animation: slideIn 0.2s ease-in reverse;
-}
-
 #vue-flow-app {
   height: 100vh;
   width: 100vw;
@@ -482,127 +196,26 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown))
   flex-direction: column;
 }
 
-/* Modal 樣式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(10, 10, 15, 0.75);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
+/* 漸層裁切文字：-webkit-text-fill-color 無對應 Tailwind utility，保留 CSS */
+.app-header__title {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.modal-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  width: 450px;
-  max-width: 90%;
-  box-shadow:
-    var(--shadow-lg),
-    0 0 30px rgba(129, 140, 248, 0.1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+/* btn-group：首尾按鈕圓角合併、相鄰邊框去重（結構選擇器，Tailwind 表達不夠乾淨，保留 CSS） */
+.btn-group > button {
+  border-radius: 0;
 }
 
-.modal-card__header {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.btn-group > button:first-child {
+  border-radius: 4px 0 0 4px;
 }
 
-.modal-card__title {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.modal-card__id {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  background: var(--bg-surface);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-}
-
-.modal-card__body {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.form-input {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  padding: 10px 12px;
-  font-size: 13px;
-  font-family: var(--font-sans);
-  outline: none;
-  transition: all var(--transition-fast);
-}
-
-.form-input:focus {
-  border-color: var(--accent-indigo);
-  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
-}
-
-.form-input--textarea {
-  resize: none;
-}
-
-.form-input--select {
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239898b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-  padding-right: 36px;
-}
-
-.modal-card__footer {
-  padding: 16px 24px;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn--outline {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
-.btn--outline:hover {
-  background: var(--bg-surface);
-  color: var(--text-primary);
+.btn-group > button:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
 }
 
 /* Modal 過渡動畫 */
