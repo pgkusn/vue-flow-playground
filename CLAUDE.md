@@ -39,7 +39,9 @@ public/data.json
 - **branch type → Handle/樣式**：`'0'`→ Yes（綠、sourceHandle `yes`）、`'else'`→ No（紅、sourceHandle `no`）、`'default'`→ 灰色單一輸出。`onConnect`（`JourneyCanvas/index.vue`）在使用者手動連線時套用同一套配色。
 - **所有 edge type 皆為 `'deletable'`**，由 `CustomEdge.vue` 渲染（動態插槽 `#edge-deletable`），提供 hover 顯示刪除鈕；一律以 `getSmoothStepPath` 平滑階梯線呈現。
 
-State 管理刻意保持輕量：`nodes`/`edges` 是 `App.vue` 的 ref，子元件透過 props 傳入、透過 emit（`edit`/`copy`/`delete`）回拋，實際增刪改用 `useVueFlow()` 的 `addNodes`/`removeNodes` 等方法。
+State 管理刻意保持輕量：`nodes`/`edges` 是 `App.vue` 的 ref，透過 `v-model:nodes`/`v-model:edges` 一路綁到 `<JourneyCanvas>`（以 `defineModel` 透傳）再到 `<VueFlow>`，形成**雙向綁定**——畫布上的拖曳、`addNodes`/`removeNodes`、undo/redo（`fromObject`）都會回寫 ref，使其成為真實狀態來源。節點的 `edit`/`copy`/`delete` 仍透過 emit 回拋；實際增刪改用 `useVueFlow()` 的 `addNodes`/`removeNodes` 等方法。
+
+注意：v-model 會把 Vue Flow 內部的 `GraphNode`/`GraphEdge`（含 `dimensions`、`handleBounds`、`computedPosition` 等內部欄位）回寫進 ref，故 ref 內容比 `toFlowNode` 產出的精簡形狀肥很多——這對渲染無害。要乾淨可序列化的狀態時用 `useVueFlow()` 的 `toObject()`（工具列「儲存」按鈕即以此 `console.log` 輸出，預備串接 API）。
 
 ## Composables
 

@@ -17,6 +17,7 @@
 - ✅ 自動連線建立與 Yes/No 分支
 - ✅ 自定義連線（hover 刪除）
 - ✅ undo / redo 歷史記錄
+- ✅ 儲存（以 `toObject()` 輸出可序列化狀態，預備串接 API）
 - ✅ 小地圖（MiniMap）、縮放控制（Controls）、背景網格（Background）
 
 ---
@@ -136,7 +137,7 @@ import DefaultNode from './DefaultNode.vue'
 </script>
 
 <template>
-  <VueFlow :nodes="nodes" :edges="edges">
+  <VueFlow v-model:nodes="nodes" v-model:edges="edges">
     <!-- 使用動態插槽來渲染自定義節點 -->
     <template #node-default="nodeProps">
       <DefaultNode v-bind="nodeProps" />
@@ -219,7 +220,7 @@ import CustomEdge from './CustomEdge.vue'
 </script>
 
 <template>
-  <VueFlow :nodes="nodes" :edges="edges">
+  <VueFlow v-model:nodes="nodes" v-model:edges="edges">
     <!-- 使用動態作用域插槽註冊名為 deletable 的邊 -->
     <template #edge-deletable="edgeProps">
       <CustomEdge v-bind="edgeProps" />
@@ -371,7 +372,9 @@ API 的節點型別會收斂成兩種 Vue Flow 自訂節點：
 
 ### 6. 狀態管理（刻意保持輕量）
 
-`nodes` / `edges` 是 `App.vue` 的 ref，子元件透過 props 傳入、透過 emit（`edit` / `copy` / `delete`）回拋；實際的增刪改一律用 `useVueFlow()` 的 `addNodes` / `removeNodes` / `addEdges` 等方法，**不另外引入狀態管理庫**。
+`nodes` / `edges` 是 `App.vue` 的 ref，透過 `v-model:nodes` / `v-model:edges` 一路綁到 `<JourneyCanvas>`（以 `defineModel` 透傳）再到 `<VueFlow>`，形成**雙向綁定**——畫布上的拖曳、增刪、undo / redo 都會回寫 ref；節點的 `edit` / `copy` / `delete` 仍透過 emit 回拋。實際的增刪改一律用 `useVueFlow()` 的 `addNodes` / `removeNodes` / `addEdges` 等方法，**不另外引入狀態管理庫**。
+
+> 📌 v-model 會把 Vue Flow 內部的 `GraphNode` / `GraphEdge`（含 `dimensions`、`handleBounds`、`computedPosition` 等內部欄位）回寫進 ref，故 ref 內容比初始的精簡形狀肥很多（對渲染無害）。要乾淨、可序列化的狀態時改用 `useVueFlow()` 的 `toObject()`——工具列的「💾 儲存」按鈕即以此 `console.log` 輸出，預備未來串接 API。
 
 ### 7. Composables 職責一覽
 

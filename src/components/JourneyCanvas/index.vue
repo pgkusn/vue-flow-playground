@@ -11,10 +11,8 @@ import ConditionNode from './ConditionNode.vue'
 import CustomEdge from './CustomEdge.vue'
 import { useDnD } from '@/composables/useDnD'
 
-defineProps<{
-  nodes: Node[]
-  edges: Edge[]
-}>()
+const nodes = defineModel<Node[]>('nodes', { required: true })
+const edges = defineModel<Edge[]>('edges', { required: true })
 
 const emit = defineEmits<{
   (e: 'edit', payload: { id: string; label: string; data: JourneyNodeData }): void
@@ -61,8 +59,8 @@ onConnect((connection: Connection) => {
     @drop="onDrop"
   >
     <VueFlow
-      :nodes
-      :edges
+      v-model:nodes="nodes"
+      v-model:edges="edges"
       :min-zoom="0.2"
       :max-zoom="4"
       fit-view-on-init

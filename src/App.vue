@@ -27,7 +27,7 @@ const { canUndo, canRedo, undo, redo, init: initHistory, reset: resetHistory } =
 // useVueFlow Composable
 // =========================================
 
-const { addNodes, removeNodes, findNode, fitView } = useVueFlow()
+const { addNodes, removeNodes, findNode, fitView, toObject } = useVueFlow()
 
 /** 等畫布完成渲染後再 fitView，延遲一個 tick 讓節點尺寸就緒 */
 const { start: scheduleFitView } = useTimeoutFn(
@@ -39,6 +39,11 @@ const { start: scheduleFitView } = useTimeoutFn(
 // =========================================
 // 工具列功能
 // =========================================
+
+/** 儲存：輸出 Vue Flow 的精簡可序列化狀態，預備未來串接 API */
+const handleSave = () => {
+  console.log('[journey] 儲存內容：', toObject())
+}
 
 /** 重置為初始狀態（重新載入 data.json） */
 const handleReset = async () => {
@@ -145,6 +150,8 @@ onMounted(async () => {
           </button>
         </div>
 
+        <button class="toolbar-btn" @click="handleSave" title="儲存">💾 儲存</button>
+
         <button class="toolbar-btn" @click="handleReset" title="重置">↩️ 重置</button>
       </div>
     </header>
@@ -156,8 +163,8 @@ onMounted(async () => {
 
       <!-- 畫布區域 -->
       <JourneyCanvas
-        :nodes
-        :edges
+        v-model:nodes="nodes"
+        v-model:edges="edges"
         @edit="handleEditNode"
         @copy="handleCopyNode"
         @delete="handleDeleteNode"
