@@ -17,19 +17,19 @@ const typeConfig: Record<string, { title: string; description: string }> = {
  * - Sidebar：呼叫 onDragStart(event, nodeType) 啟動拖曳
  * - App（canvas wrapper）：綁定 onDragOver / onDrop
  */
-export function useDnD() {
+export const useDnD = () => {
   const { addNodes, project, vueFlowRef } = useVueFlow()
 
   const isDragOver = ref(false)
 
-  function onDragStart(event: DragEvent, nodeType: string) {
+  const onDragStart = (event: DragEvent, nodeType: string) => {
     if (event.dataTransfer) {
       event.dataTransfer.setData('application/vueflow', nodeType)
       event.dataTransfer.effectAllowed = 'move'
     }
   }
 
-  function onDragOver(event: DragEvent) {
+  const onDragOver = (event: DragEvent) => {
     event.preventDefault()
     isDragOver.value = true
     if (event.dataTransfer) {
@@ -37,7 +37,7 @@ export function useDnD() {
     }
   }
 
-  function onDragLeave() {
+  const onDragLeave = () => {
     isDragOver.value = false
   }
 
@@ -45,7 +45,7 @@ export function useDnD() {
    * 放下節點到畫布：依拖曳類型建立對應的 Vue Flow 節點。
    * @returns 新建立的節點，失敗回傳 null
    */
-  function onDrop(event: DragEvent): Node | null {
+  const onDrop = (event: DragEvent): Node | null => {
     isDragOver.value = false
     if (!event.dataTransfer) return null
 

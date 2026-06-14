@@ -8,7 +8,7 @@ import { useDebounceFn, useTimeoutFn } from '@vueuse/core'
  * 透過 Vue Flow 的 toObject / fromObject 進行完整快照，
  * 監聽 onNodesChange / onEdgesChange 自動記錄，以 debounce 避免高頻記錄。
  */
-export function useHistory() {
+export const useHistory = () => {
   const { toObject, fromObject, onNodesChange, onEdgesChange } = useVueFlow()
 
   const undoStack = ref<string[]>([])
@@ -28,12 +28,12 @@ export function useHistory() {
   )
 
   /** 取得當前 Vue Flow 完整狀態的 JSON 字串 */
-  function snapshot(): string {
+  const snapshot = (): string => {
     return JSON.stringify(toObject())
   }
 
   /** 畫布就緒後呼叫，建立初始基準 */
-  function init() {
+  const init = () => {
     applying = true
     current = snapshot()
     // 等初始渲染觸發的 change 事件結束後再開始記錄
@@ -42,7 +42,7 @@ export function useHistory() {
   }
 
   /** 重設歷史（例如重置畫布後呼叫） */
-  function reset() {
+  const reset = () => {
     undoStack.value = []
     redoStack.value = []
     current = snapshot()
@@ -62,7 +62,7 @@ export function useHistory() {
     current = snap
   }, 300)
 
-  function record() {
+  const record = () => {
     if (applying || current === null) return
     commit()
   }
@@ -72,7 +72,7 @@ export function useHistory() {
   onEdgesChange(record)
 
   /** 套用快照：使用 fromObject 還原完整狀態 */
-  async function apply(snap: string) {
+  const apply = async (snap: string) => {
     applying = true
     await fromObject(JSON.parse(snap))
     current = snap
@@ -82,7 +82,7 @@ export function useHistory() {
   }
 
   /** 還原到上一步 */
-  async function undo() {
+  const undo = async () => {
     if (!undoStack.value.length || current === null) return
     const snap = undoStack.value.pop()!
     redoStack.value.push(current)
@@ -90,7 +90,7 @@ export function useHistory() {
   }
 
   /** 重做下一步 */
-  async function redo() {
+  const redo = async () => {
     if (!redoStack.value.length || current === null) return
     const snap = redoStack.value.pop()!
     undoStack.value.push(current)

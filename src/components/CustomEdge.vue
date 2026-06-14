@@ -48,7 +48,7 @@ const edgeStyle = computed<CSSProperties>(() => ({ ...(props.style as CSSPropert
 const labelColor = computed(() => (props.label === 'Yes' ? '#439e28' : props.label === 'No' ? '#303133' : stroke.value))
 const labelBg = computed(() => (props.label === 'Yes' ? '#f5f9f3' : props.label === 'No' ? '#fef2f2' : '#ffffff'))
 
-function handleDelete() {
+const handleDelete = () => {
   removeEdges(props.id)
 }
 </script>

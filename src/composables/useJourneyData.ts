@@ -43,12 +43,12 @@ const BRANCH_STROKE = {
 }
 
 /** 節點摘要文字。目前一律回傳固定字串，日後再依 config 產生真正摘要 */
-function summarize(): string {
+const summarize = (): string => {
   return '重點訊息'
 }
 
 /** API 節點 → Vue Flow 節點 */
-function toFlowNode(node: JourneyApiNode): Node<JourneyNodeData> {
+const toFlowNode = (node: JourneyApiNode): Node<JourneyNodeData> => {
   return {
     id: node.id,
     type: node.type === 'condition' ? 'condition' : 'journey',
@@ -63,7 +63,7 @@ function toFlowNode(node: JourneyApiNode): Node<JourneyNodeData> {
 }
 
 /** API branches → Vue Flow edges */
-function toFlowEdges(node: JourneyApiNode, typeById: Map<string, JourneyNodeType>): Edge<JourneyEdgeData>[] {
+const toFlowEdges = (node: JourneyApiNode, typeById: Map<string, JourneyNodeType>): Edge<JourneyEdgeData>[] => {
   const branches = Array.isArray(node.branches) ? node.branches : []
   return branches.map(branch => {
     const isYes = branch.type === '0'
@@ -102,7 +102,7 @@ export interface LoadJourneyResult {
  * 載入並轉換 public/data.json 為 Vue Flow 的 nodes / edges。
  * 載入或解析失敗時 throw，由呼叫端處理（顯示 toast、不致整頁崩潰）。
  */
-export async function loadJourney(): Promise<LoadJourneyResult> {
+export const loadJourney = async (): Promise<LoadJourneyResult> => {
   const res = await fetch('/data.json')
   if (!res.ok) throw new Error(`載入 data.json 失敗：HTTP ${res.status}`)
 

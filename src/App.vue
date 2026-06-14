@@ -41,7 +41,7 @@ const { start: scheduleFitView } = useTimeoutFn(
 // =========================================
 
 /** 重置為初始狀態（重新載入 data.json） */
-async function handleReset() {
+const handleReset = async () => {
   await loadJourneyData()
   resetHistory()
 }
@@ -49,7 +49,7 @@ async function handleReset() {
 /**
  * 載入 data.json 並設定畫布；失敗時清空畫布且不致整頁崩潰。
  */
-async function loadJourneyData() {
+const loadJourneyData = async () => {
   try {
     const result = await loadJourney()
     nodes.value = result.nodes
@@ -70,18 +70,18 @@ async function loadJourneyData() {
 const isEditModalOpen = ref(false)
 const editingNode = ref<{ id: string; label: string; data: any } | null>(null)
 
-function handleEditNode(payload: { id: string; label: string; data: any }) {
+const handleEditNode = (payload: { id: string; label: string; data: any }) => {
   // 深度拷貝 payload 避免編輯時即時修改畫布上原有的資料 (以支持取消功能)
   editingNode.value = JSON.parse(JSON.stringify(payload))
   isEditModalOpen.value = true
 }
 
-function closeEditModal() {
+const closeEditModal = () => {
   isEditModalOpen.value = false
   editingNode.value = null
 }
 
-function handleCopyNode(id: string) {
+const handleCopyNode = (id: string) => {
   const targetNode = findNode(id)
   if (!targetNode) return
 
@@ -101,7 +101,7 @@ function handleCopyNode(id: string) {
   addNodes([copiedNode])
 }
 
-function handleDeleteNode(id: string) {
+const handleDeleteNode = (id: string) => {
   const targetNode = findNode(id)
   if (!targetNode) return
 
