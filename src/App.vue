@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
+import { useTimeoutFn } from '@vueuse/core'
 import { useVueFlow } from '@vue-flow/core'
 import type { Node, Edge } from '@vue-flow/core'
 
@@ -22,15 +23,18 @@ const edges = ref<Edge[]>([])
 
 const { canUndo, canRedo, undo, redo, init: initHistory, reset: resetHistory } = useHistory()
 
-/** 工具列按鈕共用 Tailwind 樣式 */
-const btnClass =
-  'inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded border border-[#dcdfe6] bg-white px-[15px] py-2 text-sm text-[#606266] transition-all hover:border-[#c6e2ff] hover:bg-[#ecf5ff] hover:text-[#409eff] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
-
 // =========================================
 // useVueFlow Composable
 // =========================================
 
 const { addNodes, removeNodes, findNode, fitView } = useVueFlow()
+
+/** 等畫布完成渲染後再 fitView，延遲一個 tick 讓節點尺寸就緒 */
+const { start: scheduleFitView } = useTimeoutFn(
+  () => fitView({ padding: 0.2, duration: 400 }),
+  50,
+  { immediate: false },
+)
 
 // =========================================
 // 工具列功能
@@ -51,7 +55,7 @@ async function loadJourneyData() {
     nodes.value = result.nodes
     edges.value = result.edges
     await nextTick()
-    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
+    scheduleFitView()
   } catch (err) {
     nodes.value = []
     edges.value = []
@@ -137,15 +141,15 @@ onMounted(async () => {
       <div class="flex items-center gap-2">
         <!-- Undo / Redo -->
         <div class="btn-group inline-flex">
-          <button :class="btnClass" :disabled="!canUndo" @click="undo" title="上一步 (⌘Z)">
+          <button class="toolbar-btn" :disabled="!canUndo" @click="undo" title="上一步 (⌘Z)">
             ↩️ 上一步
           </button>
-          <button :class="btnClass" :disabled="!canRedo" @click="redo" title="下一步 (⌘⇧Z)">
+          <button class="toolbar-btn" :disabled="!canRedo" @click="redo" title="下一步 (⌘⇧Z)">
             ↪️ 下一步
           </button>
         </div>
 
-        <button :class="btnClass" @click="handleReset" title="重置">↩️ 重置</button>
+        <button class="toolbar-btn" @click="handleReset" title="重置">↩️ 重置</button>
       </div>
     </header>
 
@@ -168,11 +172,15 @@ onMounted(async () => {
     <Transition name="modal">
       <div
         v-if="isEditModalOpen && editingNode"
-        class="fixed inset-0 z-[999] flex items-center justify-center bg-[rgba(10,10,15,0.75)] backdrop-blur-sm"
+        class="fixed inset-0 z-999 flex items-center justify-center bg-[rgba(10,10,15,0.75)] backdrop-blur-sm"
         @click.self="closeEditModal"
       >
-        <div class="modal-card flex max-h-[90%] min-h-[240px] w-[450px] max-w-[90%] flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-2xl">
-          <header class="flex items-center justify-between border-b border-[#e2e8f0] px-[22px] py-[18px]">
+        <div
+          class="modal-card flex max-h-[90%] min-h-[240px] w-[450px] max-w-[90%] flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-2xl"
+        >
+          <header
+            class="flex items-center justify-between border-b border-[#e2e8f0] px-[22px] py-[18px]"
+          >
             <h3 class="m-0 text-[15px] font-bold text-[#0f172a]">節點設定</h3>
             <button
               class="cursor-pointer border-none bg-transparent p-1 text-[15px] leading-none text-slate-400 transition hover:text-[#0f172a]"
@@ -189,6 +197,8 @@ onMounted(async () => {
 </template>
 
 <style>
+@reference "tailwindcss";
+
 #vue-flow-app {
   height: 100vh;
   width: 100vw;
@@ -202,6 +212,13 @@ onMounted(async () => {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* 工具列按鈕：@apply 集中管理共用樣式，避免在 template 重複長字串 */
+.toolbar-btn {
+  @apply inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded border border-[#dcdfe6] bg-white px-[15px] py-2 text-sm text-[#606266] transition-all;
+  @apply hover:border-[#c6e2ff] hover:bg-[#ecf5ff] hover:text-[#409eff];
+  @apply disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 /* btn-group：首尾按鈕圓角合併、相鄰邊框去重（結構選擇器，Tailwind 表達不夠乾淨，保留 CSS） */
