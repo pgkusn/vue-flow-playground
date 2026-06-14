@@ -120,11 +120,11 @@ onMounted(async () => {
   <div id="vue-flow-app">
     <!-- 頂部導覽列 -->
     <header
-      class="z-10 flex shrink-0 items-center justify-between bg-white px-6 py-3.5 shadow-[0_0_6px_rgba(0,0,0,0.12)]"
+      class="app-header z-10 flex flex-shrink-0 items-center justify-between bg-white px-6 py-3.5"
     >
       <div class="flex items-center gap-2.5">
         <div
-          class="flex h-7 w-7 items-center justify-center rounded-md bg-[linear-gradient(135deg,#818cf8_0%,#a78bfa_50%,#c084fc_100%)] text-sm"
+          class="app-header__logo flex h-7 w-7 items-center justify-center rounded-md text-sm"
         >
           ⬡
         </div>
@@ -132,7 +132,7 @@ onMounted(async () => {
           <div class="app-header__title text-[15px] font-semibold tracking-[-0.02em]">
             Vue Flow Playground
           </div>
-          <div class="text-[11px] font-[JetBrains_Mono,'Fira_Code',monospace] text-[#909399]">
+          <div class="app-header__subtitle text-[11px] text-[#909399]">
             互動式流程圖編輯器
           </div>
         </div>
@@ -172,7 +172,7 @@ onMounted(async () => {
     <Transition name="modal">
       <div
         v-if="isEditModalOpen && editingNode"
-        class="fixed inset-0 z-999 flex items-center justify-center bg-[rgba(10,10,15,0.75)] backdrop-blur-sm"
+        class="modal-overlay fixed inset-0 z-[999] flex items-center justify-center bg-[#0a0a0fbf]"
         @click.self="closeEditModal"
       >
         <div
@@ -183,7 +183,7 @@ onMounted(async () => {
           >
             <h3 class="m-0 text-[15px] font-bold text-[#0f172a]">節點設定</h3>
             <button
-              class="cursor-pointer border-none bg-transparent p-1 text-[15px] leading-none text-slate-400 transition hover:text-[#0f172a]"
+              class="cursor-pointer border-none bg-transparent p-1 text-[15px] leading-none text-[#94a3b8] transition hover:text-[#0f172a]"
               @click="closeEditModal"
             >
               ✕
@@ -197,8 +197,6 @@ onMounted(async () => {
 </template>
 
 <style>
-@reference "tailwindcss";
-
 #vue-flow-app {
   height: 100vh;
   width: 100vw;
@@ -206,7 +204,18 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-/* 漸層裁切文字：-webkit-text-fill-color 無對應 Tailwind utility，保留 CSS */
+.app-header {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.12);
+}
+
+.app-header__logo {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
+}
+
+.app-header__subtitle {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
 .app-header__title {
   background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
   -webkit-background-clip: text;
@@ -214,14 +223,16 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
 }
 
-/* 工具列按鈕：@apply 集中管理共用樣式，避免在 template 重複長字串 */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+}
+
 .toolbar-btn {
   @apply inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded border border-[#dcdfe6] bg-white px-[15px] py-2 text-sm text-[#606266] transition-all;
   @apply hover:border-[#c6e2ff] hover:bg-[#ecf5ff] hover:text-[#409eff];
   @apply disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50;
 }
 
-/* btn-group：首尾按鈕圓角合併、相鄰邊框去重（結構選擇器，Tailwind 表達不夠乾淨，保留 CSS） */
 .btn-group > button {
   border-radius: 0;
 }
@@ -235,7 +246,6 @@ onMounted(async () => {
   border-left: none;
 }
 
-/* Modal 過渡動畫 */
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.25s ease;

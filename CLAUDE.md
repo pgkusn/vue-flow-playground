@@ -16,7 +16,7 @@ npm run preview  # 預覽 production 建構結果
 
 Vue Flow 的節點式流程圖編輯器，領域是 **LINE 行銷自動化「旅程」（journey）**：起點觸發後依序經過等待、動作、條件分流，最終結束。畫布初始內容由 `public/data.json` 載入，其資料結構（節點 type、config、branches）完整定義於 `docs/api.md`——修改載入/轉換邏輯前務必先讀該檔。
 
-技術棧：Vue 3 `<script setup>` + TypeScript + Vite 8 + Tailwind CSS v4。Tailwind 透過 `@tailwindcss/vite` plugin 啟用（`vite.config.ts`），**沒有** `tailwind.config.js`。
+技術棧：Vue 3 `<script setup>` + TypeScript + Vite 8 + Tailwind CSS 2.2.17（**JIT 模式**）。Tailwind 透過 PostCSS 啟用：`postcss.config.cjs` 載入 `tailwindcss` + `autoprefixer`，設定在 `tailwind.config.cjs`（專案為 ESM，故 config 一律用 `.cjs`）。進入點 `src/style.css` 以 `@tailwind base/components/utilities` 注入，**不是** v4 的 `@import 'tailwindcss'`。
 
 ## 資料流與架構
 
@@ -53,6 +53,7 @@ State 管理刻意保持輕量：`nodes`/`edges` 是 `App.vue` 的 ref，子元�
 2. **覆寫 Vue Flow 第三方產生的 `.vue-flow__*` DOM** 時，必須用 **非 scoped** `<style>` + 全域選擇器 + `!important`（scoped 無法穿透第三方 DOM）。這類 CSS 一律以元件根 class（如 `.journey-canvas`）作前綴，**隨元件檔案移動、不依賴全域檔案**。
 3. **元件要可獨立移植**：所需的設計變數（如 `--accent-violet`）直接複製進元件根選擇器（見 `JourneyCanvas.vue` 的 `.journey-canvas`），不依賴全域 `:root`。
 4. 將全域 CSS 搬進元件時，優先評估改寫成 Tailwind utility，而非原樣搬移；無對應 utility 者（如 `-webkit-text-fill-color`、`:first-child` 結構選擇器）才保留 CSS。
+5. **2.2.17 的限制（重要）**：JIT 支援 `[...]` arbitrary value，但僅限**單 token** 值（如 `text-[15px]`、`bg-[#d4d7de]`、`z-[999]`）；**多 token 值空格須用逗號、不可用底線**，且 gradient／box-shadow／font 堆疊等複雜值不可靠 → 一律改原生 CSS（見 `App.vue` 的 `.app-header__logo`、`.modal-overlay`，`JourneyCanvas.vue` 的 `.journey-canvas--dragover`）。另有 v3+ 才有、2.2.17 沒有的 utility 須替換：`shrink-0`→`flex-shrink-0`、`slate` 調色盤→arbitrary hex、`cursor-grab`／`backdrop-blur`／`active:scale` 等→原生 CSS。`@apply` 可用（含 arbitrary value 與變體）；v4 的 `@reference` 不需要。
 
 ## OpenSpec 工作流程
 

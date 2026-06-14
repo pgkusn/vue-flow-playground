@@ -43,21 +43,21 @@ const handleStyle = {
       class="pointer-events-none absolute right-0 bottom-full flex gap-1.5 pb-2 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"
     >
       <button
-        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-slate-50"
+        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-[#f8fafc]"
         title="設定"
         @click.stop="emit('edit', { id, label: data.title, data })"
       >
         <Setting class="h-3.5 w-3.5" />
       </button>
       <button
-        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-slate-50"
+        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-[#f8fafc]"
         title="複製"
         @click.stop="emit('copy', id)"
       >
         <CopyDocument class="h-3.5 w-3.5" />
       </button>
       <button
-        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-slate-50"
+        class="flex h-6 w-6 items-center justify-center rounded bg-white text-[#606266] shadow-md transition hover:bg-[#f8fafc]"
         title="刪除"
         @click.stop="emit('delete', id)"
       >
@@ -75,7 +75,7 @@ const handleStyle = {
 
     <div class="flex items-center gap-1.5 p-3">
       <div
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded"
+        class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded"
         :style="{ background: style.bg }"
       >
         <component :is="style.icon" class="h-3.5 w-3.5 text-white" />

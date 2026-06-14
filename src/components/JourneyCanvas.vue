@@ -55,7 +55,7 @@ onConnect((connection: Connection) => {
 <template>
   <div
     class="journey-canvas relative flex-1 overflow-hidden transition-shadow duration-200"
-    :class="{ 'shadow-[inset_0_0_0_2px_rgba(129,140,248,0.4)]': isDragOver }"
+    :class="{ 'journey-canvas--dragover': isDragOver }"
     @dragover="onDragOver"
     @dragleave="onDragLeave"
     @drop="onDrop"
@@ -109,8 +109,6 @@ onConnect((connection: Connection) => {
   本區塊隨元件檔案移動，移植時無需另尋全域樣式。
 -->
 <style>
-/* 元件自帶的設計變數（複製自全域 :root），透過繼承供內部 .vue-flow__* DOM 使用，
-   使本元件不相依全域 :root 即可獨立移植 */
 .journey-canvas {
   --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -118,12 +116,14 @@ onConnect((connection: Connection) => {
   --accent-emerald: #34d399;
 }
 
-/* Canvas background（取自設計稿畫布底色） */
+.journey-canvas--dragover {
+  box-shadow: inset 0 0 0 2px rgba(129, 140, 248, 0.4);
+}
+
 .journey-canvas .vue-flow {
   background: #f2f3f5 !important;
 }
 
-/* 節點外層容器交給自訂卡片元件呈現邊框/陰影，這裡保持中性 */
 .journey-canvas .vue-flow__node {
   font-family: var(--font-sans) !important;
   border: none !important;
@@ -136,8 +136,6 @@ onConnect((connection: Connection) => {
   border-radius: 8px;
 }
 
-/* Handles：8px 深灰圓點、白邊（取自設計稿 dot-s / dot-e）；
-   不使用 !important，讓判斷節點 yes/no 的 inline 綠/紅可覆蓋 */
 .journey-canvas .vue-flow__handle {
   width: 8px;
   height: 8px;
@@ -163,7 +161,6 @@ onConnect((connection: Connection) => {
   transform: translate(-50%, 50%) scale(1.2);
 }
 
-/* Edges：實際顏色/線寬由 CustomEdge 以 inline style 提供，此為後備值 */
 .journey-canvas .vue-flow__edge-path {
   stroke: #909399;
   stroke-width: 2;
@@ -185,7 +182,6 @@ onConnect((connection: Connection) => {
   }
 }
 
-/* 刪除連線按鈕：純 CSS hover，按鈕與 hit-area 同在 edge <g> 子樹，hover/selected 時才顯示 */
 .journey-canvas .edge-delete-btn {
   opacity: 0;
   transform: scale(0.5);
@@ -200,14 +196,12 @@ onConnect((connection: Connection) => {
   pointer-events: all;
 }
 
-/* Connection line */
 .journey-canvas .vue-flow__connection-path {
   stroke: var(--accent-emerald) !important;
   stroke-width: 2 !important;
   stroke-dasharray: 5;
 }
 
-/* Minimap overrides（取自設計稿 ScaleCanva：淺灰底、細邊、圓角 10） */
 .journey-canvas .vue-flow__minimap {
   width: 180px !important;
   height: 140px !important;
@@ -228,7 +222,6 @@ onConnect((connection: Connection) => {
   fill: rgba(255, 255, 255, 0.65) !important;
 }
 
-/* Controls overrides（取自設計稿 FunctionButton：垂直按鈕組、共用邊框分隔線） */
 .journey-canvas .vue-flow__controls {
   background: #ffffff !important;
   border: 1px solid #dcdfe6 !important;
@@ -265,12 +258,10 @@ onConnect((connection: Connection) => {
   fill: #303133 !important;
 }
 
-/* Background pattern */
 .journey-canvas .vue-flow__background {
   opacity: 0.4;
 }
 
-/* Selection box */
 .journey-canvas .vue-flow__selection {
   background: rgba(129, 140, 248, 0.08) !important;
   border: 1px solid rgba(129, 140, 248, 0.3) !important;
