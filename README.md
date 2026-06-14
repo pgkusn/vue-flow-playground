@@ -3,7 +3,7 @@
 > 使用 [Vue Flow](https://github.com/bcakmakoglu/vue-flow) 建立的互動式流程圖編輯器範例程式
 
 ![Vue 3](https://img.shields.io/badge/Vue-3.5-42b883?style=flat-square&logo=vuedotjs)
-![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?style=flat-square&logo=typescript)
+![TypeScript](https://img.shields.io/badge/TypeScript-6+-3178c6?style=flat-square&logo=typescript)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
@@ -55,16 +55,18 @@ vue-flow-playground/
 │   └── icons.svg                # icon sprite
 ├── src/
 │   ├── components/
-│   │   ├── JourneyCanvas.vue    # Vue Flow 畫布容器
-│   │   ├── JourneyNode.vue      # 一般節點（entry/wait/action/end）
-│   │   ├── ConditionNode.vue    # 判斷節點（yes/no 兩輸出）
-│   │   ├── CustomEdge.vue       # 自定義連線（hover 刪除、Yes/No 標籤）
+│   │   ├── JourneyCanvas/           # 畫布相關元件
+│   │   │   ├── index.vue            # Vue Flow 畫布容器
+│   │   │   ├── DefaultNode.vue      # 一般節點（entry/wait/action/end）
+│   │   │   ├── ConditionNode.vue    # 判斷節點（yes/no 兩輸出）
+│   │   │   └── CustomEdge.vue       # 自定義連線（hover 刪除、Yes/No 標籤）
 │   │   └── Sidebar.vue          # 左側面板（拖曳新增節點）
 │   ├── composables/
 │   │   ├── useJourneyData.ts    # 載入 data.json 並轉成 nodes/edges
 │   │   ├── useJourneyLayout.ts  # dagre 自動排版（由左至右）
 │   │   ├── useDnD.ts            # 側邊欄拖曳新增節點
-│   │   └── useHistory.ts        # undo / redo 歷史快照
+│   │   ├── useHistory.ts        # undo / redo 歷史快照
+│   │   └── useNodeId.ts         # 共用的節點 ID 產生器（nextNodeId）
 │   ├── main.ts                  # 應用進入點 + CSS 匯入
 │   ├── style.css                # 全域樣式 + Vue Flow 主題覆寫
 │   └── App.vue                  # 主要應用元件
@@ -111,7 +113,7 @@ Vue Flow 提供三種內建節點：
 你也可以透過 **自定義節點** 來完全掌控外觀：
 
 ```vue
-<!-- JourneyNode.vue -->
+<!-- DefaultNode.vue -->
 <script setup>
 import { Handle, Position } from '@vue-flow/core'
 defineProps(['id', 'data'])
@@ -126,18 +128,18 @@ defineProps(['id', 'data'])
 </template>
 ```
 
-然後直接在 VueFlow 元件中使用動態作用域插槽 `#node-<type>` 來渲染（本專案在 `JourneyCanvas.vue` 以 `#node-journey` / `#node-condition` 註冊）：
+然後直接在 VueFlow 元件中使用動態作用域插槽 `#node-<type>` 來渲染（本專案在 `JourneyCanvas/index.vue` 以 `#node-default` / `#node-condition` 註冊）：
 
 ```vue
 <script setup>
-import JourneyNode from './JourneyNode.vue'
+import DefaultNode from './DefaultNode.vue'
 </script>
 
 <template>
   <VueFlow :nodes="nodes" :edges="edges">
     <!-- 使用動態插槽來渲染自定義節點 -->
-    <template #node-journey="nodeProps">
-      <JourneyNode v-bind="nodeProps" />
+    <template #node-default="nodeProps">
+      <DefaultNode v-bind="nodeProps" />
     </template>
   </VueFlow>
 </template>
@@ -169,22 +171,20 @@ const edges = [
 
 為了在連線（Edge）上新增互動元素（例如：滑鼠懸停時顯示「刪除連線」的按鈕），我們可以使用自定義邊。
 
-由於 Vue Flow 的 `EdgeLabelRenderer` 是將內容 Teleport 到獨立的 DOM 容器（`.vue-flow__edge-labels`），使得純 CSS 的 `:hover` 選擇器無法跨越 SVG 與 HTML 邊界來驅動按鈕顯示。本專案採用以下方法解決：
-1. **JavaScript 響應式狀態**：使用 `const isHovered = ref(false)`。
-2. **透明加粗感應區**：在原本的連線上方疊加一個透明且較寬的 `<path stroke-width="20" stroke="transparent">`。
-3. **滑鼠事件驅動**：利用 `@mouseenter` / `@mouseleave` 監聽感應區與按鈕包裹層，從而流暢且精準地控制刪除按鈕的顯示狀態。
-4. **調用 Composable 刪除**：點擊按鈕時觸發 `useVueFlow()` 解構出來的 `removeEdges(props.id)` 來移除連線。
+本專案的作法是把刪除按鈕放在 edge 的 SVG `<g>` 子樹內（而非 Teleport 出去的 `EdgeLabelRenderer`），讓純 CSS 的 `:hover` 就能驅動顯示，無閃爍：
+1. **透明加粗感應區**：在原本的連線上方疊加一個透明且較寬的 `<path stroke-width="20" stroke="transparent">`，擴大滑鼠感應範圍，使線段任一處都能觸發 hover。
+2. **全域 CSS 控制顯示**：刪除按鈕預設 `opacity: 0`，由非 scoped 的全域選擇器 `.vue-flow__edge:hover` / `.vue-flow__edge.selected` 切換顯示（見 `JourneyCanvas/index.vue` 的 `.edge-delete-btn` 樣式），不需 JavaScript 響應式狀態。
+3. **調用 Composable 刪除**：點擊按鈕時觸發 `useVueFlow()` 解構出來的 `removeEdges(props.id)` 來移除連線。
 
 #### 自定義邊元件實作示例（`CustomEdge.vue`）：
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { getSmoothStepPath, EdgeLabelRenderer, BaseEdge, useVueFlow, type EdgeProps } from '@vue-flow/core'
+import { computed } from 'vue'
+import { getSmoothStepPath, BaseEdge, useVueFlow, type EdgeProps } from '@vue-flow/core'
 
 const props = defineProps<EdgeProps>()
 const { removeEdges } = useVueFlow()
-const isHovered = ref(false)
 
 const pathData = computed(() => getSmoothStepPath({
   sourceX: props.sourceX, sourceY: props.sourceY, sourcePosition: props.sourcePosition,
@@ -197,27 +197,25 @@ const labelY = computed(() => pathData.value[2])
 
 <template>
   <!-- 渲染基礎連線 -->
-  <BaseEdge :id="id" :path="edgePath" :marker-end="markerEnd" :style="style" />
+  <BaseEdge :id="id" :path="edgePath" :style="style" />
 
-  <!-- 透明感應區（寬度 20px） -->
-  <path :d="edgePath" fill="none" stroke="transparent" stroke-width="20"
-        @mouseenter="isHovered = true" @mouseleave="isHovered = false" />
+  <!-- 透明感應區（寬度 20px）：擴大 hover 範圍 -->
+  <path :d="edgePath" fill="none" stroke="transparent" stroke-width="20" style="cursor: pointer" />
 
-  <!-- 刪除按鈕 -->
-  <EdgeLabelRenderer>
-    <div :style="{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all' }"
-         @mouseenter="isHovered = true" @mouseleave="isHovered = false">
-      <button v-show="isHovered || selected" class="edge-delete-btn" @click.stop="removeEdges(id)">×</button>
-    </div>
-  </EdgeLabelRenderer>
+  <!-- 刪除按鈕放在 edge 的 SVG <g> 內，顯示與否交由全域 CSS（.vue-flow__edge:hover）控制 -->
+  <foreignObject :x="labelX - 16" :y="labelY - 16" width="32" height="32" style="overflow: visible">
+    <button class="edge-delete-btn" @click.stop="removeEdges(id)">×</button>
+  </foreignObject>
 </template>
 ```
 
-#### 在 `App.vue` 註冊與使用自定義邊：
+> 📌 為求精簡，上方範例只示範核心結構。實際的 `CustomEdge.vue` 還支援 `data.straight` 直線模式（動作 ↔ 判斷節點間改用 `getStraightPath`）、Yes/No 彩色分支標籤，以及 Element Plus 的 `Delete` 圖示按鈕，完整內容請見原始碼。
+
+#### 在 `JourneyCanvas/index.vue` 註冊與使用自定義邊：
 
 ```vue
 <script setup>
-import CustomEdge from './components/CustomEdge.vue'
+import CustomEdge from './CustomEdge.vue'
 </script>
 
 <template>
@@ -257,6 +255,8 @@ onConnect((connection) => {
 })
 </script>
 ```
+
+> 📌 本專案的 `onConnect`（位於 `JourneyCanvas/index.vue`）會進一步依來源 Handle 套用分支樣式：來自判斷節點 `yes` Handle 的連線標為綠色 `Yes`、`no` Handle 標為紅色 `No`，其餘為灰色 default，並加上 `animated: true`。
 
 ---
 
@@ -307,13 +307,86 @@ import '@vue-flow/minimap/dist/style.css'
 </script>
 
 <template>
+  <!-- 本專案在 JourneyCanvas/index.vue 內的 <VueFlow> 使用三個外掛 -->
   <VueFlow v-model:nodes="nodes" v-model:edges="edges">
-    <Background :gap="20" />
+    <Background :gap="20" :size="1" pattern-color="#cbd5e1" />
     <Controls />
     <MiniMap pannable zoomable />
   </VueFlow>
 </template>
 ```
+
+---
+
+## 🧩 專案實作方式
+
+前面是 Vue Flow 的通用概念，這一節說明 **本專案如何把這些概念組裝起來**，幫你建立整體的心智模型。
+
+### 1. 單向資料 pipeline
+
+啟動載入是一條單向流程，集中在 `useJourneyData.ts`：
+
+```
+public/data.json
+  → loadJourney()             fetch + 驗證（失敗則 throw，呼叫端不致整頁崩潰）
+  → toFlowNode / toFlowEdges  API 節點 → Vue Flow node / edge
+  → layoutJourney()           dagre 自動排版（在 loadJourney 內部呼叫）
+  → App.vue 的 nodes / edges ref
+  → <JourneyCanvas>           以 <VueFlow> 渲染
+```
+
+`loadJourney()` 回傳 `{ nodes, edges }`，`App.vue` 直接指派給兩個 ref；資料結構（節點 type、config、branches）完整定義於 `docs/api.md`。
+
+### 2. 節點 type 對應
+
+API 的節點型別會收斂成兩種 Vue Flow 自訂節點：
+
+| API type | Vue Flow type | 元件 | 說明 |
+|:---|:---|:---|:---|
+| `entry` / `wait` / `action` / `end` | `default` | `DefaultNode.vue` | 一般節點，單一輸入 / 輸出 |
+| `condition` | `condition` | `ConditionNode.vue` | 判斷節點，具 `yes` / `no` 兩個輸出 Handle |
+
+兩者透過 `<VueFlow>` 的動態插槽 `#node-default` / `#node-condition` 註冊（見 `JourneyCanvas/index.vue`）。
+
+### 3. 自動排版（無座標資料）
+
+`data.json` **不含座標**，位置由 `useJourneyLayout.ts` 用 `@dagrejs/dagre` 以 LR（由左至右）計算。重點：
+
+- dagre 回傳的是節點 **中心點**，需換算成 Vue Flow 的左上角座標。
+- 兩段後處理：將 action ↔ condition 之間拉成水平直線、強制 condition 的 **Yes 分支顯示在 No 分支上方**。
+
+### 4. 分支 → Handle / 樣式映射
+
+| API branch | 分支 | sourceHandle | 顏色 |
+|:---|:---|:---|:---|
+| `'0'` | Yes | `yes` | 綠 `#439e28` |
+| `'else'` | No | `no` | 紅 `#f43f5e` |
+| `'default'` | 預設 | （單一輸出） | 灰 `#909399` |
+
+使用者手動連線時，`onConnect`（`JourneyCanvas/index.vue`）依來源 Handle 套用同一套配色。
+
+### 5. 所有 Edge 皆為 `deletable`
+
+畫布以 `:default-edge-options="{ type: 'deletable' }"` 讓每條連線都由 `CustomEdge.vue` 渲染（hover 顯示刪除鈕）；`data.straight` 為 true 時改用直線而非平滑階梯線。
+
+### 6. 狀態管理（刻意保持輕量）
+
+`nodes` / `edges` 是 `App.vue` 的 ref，子元件透過 props 傳入、透過 emit（`edit` / `copy` / `delete`）回拋；實際的增刪改一律用 `useVueFlow()` 的 `addNodes` / `removeNodes` / `addEdges` 等方法，**不另外引入狀態管理庫**。
+
+### 7. Composables 職責一覽
+
+| Composable | 職責 |
+|:---|:---|
+| `useJourneyData.ts` | 載入 `data.json`、驗證、轉成 Vue Flow nodes / edges（內部呼叫排版） |
+| `useJourneyLayout.ts` | dagre LR 自動排版與後處理 |
+| `useDnD.ts` | 側邊欄拖曳新增節點，`project()` 將螢幕座標轉成畫布座標 |
+| `useHistory.ts` | undo / redo，以 `toObject` / `fromObject` 做完整快照（300ms debounce） |
+| `useNodeId.ts` | 共用的節點 ID 產生器 `nextNodeId()` |
+
+### 8. 樣式策略
+
+- **元件自身的 DOM** 一律用 Tailwind utility class（寫在 template）。
+- **覆寫 Vue Flow 第三方產生的 `.vue-flow__*` DOM** 時，用 **非 scoped** `<style>` + 全域選擇器 + `!important`（scoped 無法穿透第三方 DOM），並以元件根 class（如 `.journey-canvas`）作前綴，使樣式隨元件檔案移動、可獨立移植。
 
 ---
 
@@ -343,15 +416,29 @@ import '@vue-flow/minimap/dist/style.css'
 
 ## 📦 使用的套件
 
+### 執行相依（dependencies）
+
 | 套件 | 說明 |
 |:---|:---|
 | [`@vue-flow/core`](https://vueflow.dev) | Vue Flow 核心庫 |
 | [`@vue-flow/background`](https://vueflow.dev) | 背景網格外掛 |
 | [`@vue-flow/controls`](https://vueflow.dev) | 縮放控制外掛 |
 | [`@vue-flow/minimap`](https://vueflow.dev) | 小地圖外掛 |
+| [`@dagrejs/dagre`](https://github.com/dagrejs/dagre) | 自動排版（節點座標計算，由左至右） |
+| [`@vueuse/core`](https://vueuse.org) | Vue Composition 工具集 |
+| [`@element-plus/icons-vue`](https://element-plus.org/en-US/component/icon.html) | 圖示庫（如連線刪除鈕的 Delete 圖示） |
 | [`vue`](https://vuejs.org) | Vue 3 框架 |
+
+### 開發相依（devDependencies）
+
+| 套件 | 說明 |
+|:---|:---|
 | [`vite`](https://vite.dev) | 建構工具 |
 | [`typescript`](https://www.typescriptlang.org) | 型別系統 |
+| [`vue-tsc`](https://github.com/vuejs/language-tools) | Vue 型別檢查（`npm run build` 內含） |
+| [`tailwindcss`](https://tailwindcss.com) | CSS utility 框架（2.2.17，JIT 模式） |
+| [`postcss`](https://postcss.org) | CSS 處理器（啟用 Tailwind） |
+| [`autoprefixer`](https://github.com/postcss/autoprefixer) | 自動補上 CSS 廠商前綴 |
 
 ---
 

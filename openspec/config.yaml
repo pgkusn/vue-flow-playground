@@ -7,12 +7,15 @@ context: |
   領域：LINE 行銷自動化「旅程」(journey)——起點(entry) 觸發後經過 等待(wait)、
         動作(action)、條件分流(condition)，最終 結束(end)。節點資料結構（type/config/branches）
         完整定義於 docs/api.md，畫布初始內容載自 public/data.json。
-  技術棧：Vue 3 <script setup> + TypeScript + Vite 8 + Tailwind CSS v4
-        （透過 @tailwindcss/vite plugin，無 tailwind.config.js）。
+  技術棧：Vue 3 <script setup> + TypeScript + Vite 8 + Tailwind CSS 2.2.17 JIT
+        （透過 PostCSS：postcss.config.cjs 載入 tailwindcss + autoprefixer，設定在 tailwind.config.cjs；
+        入口 src/style.css 使用 @tailwind base/components/utilities，非 v4 的 @import 'tailwindcss'）。
   核心套件：@vue-flow/core（含 background/controls/minimap 外掛）、@dagrejs/dagre（自動排版）、
-        @element-plus/icons-vue（icon）。
+        @element-plus/icons-vue（icon）、@vueuse/core（composables 工具庫）。
   架構：data.json → useJourneyData(loadJourney/toFlowNode/toFlowEdges) → useJourneyLayout(dagre LR 排版)
-        → App.vue 的 nodes/edges ref → JourneyCanvas <VueFlow>。
+        → App.vue 的 nodes/edges ref → JourneyCanvas/index.vue <VueFlow>。
+        元件目錄 src/components/JourneyCanvas/：index.vue（畫布）、defaultNode.vue（journey 節點）、
+        ConditionNode.vue、CustomEdge.vue；側邊欄為 src/components/Sidebar.vue。
         API entry/wait/action/end 映射到 Vue Flow type 'journey'，condition 映射到 'condition'。
         edge 一律為 'deletable' 型別。undo/redo 由 useHistory（toObject/fromObject 快照）提供。
   慣例：元件 DOM 用 Tailwind utility；覆寫 Vue Flow 第三方 DOM 用非 scoped 全域 CSS + !important，

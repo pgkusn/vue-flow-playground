@@ -4,11 +4,11 @@ import { useTimeoutFn } from '@vueuse/core'
 import { useVueFlow } from '@vue-flow/core'
 import type { Node, Edge } from '@vue-flow/core'
 
-import JourneyCanvas from './components/JourneyCanvas.vue'
-import Sidebar from './components/Sidebar.vue'
-import { loadJourney } from './composables/useJourneyData'
-import { useHistory } from './composables/useHistory'
-import { nextNodeId } from './composables/useNodeId'
+import JourneyCanvas from '@/components/JourneyCanvas/index.vue'
+import Sidebar from '@/components/Sidebar.vue'
+import { loadJourney } from '@/composables/useJourneyData'
+import { useHistory } from '@/composables/useHistory'
+import { nextNodeId } from '@/composables/useNodeId'
 
 // =========================================
 // 狀態管理
@@ -64,7 +64,7 @@ const loadJourneyData = async () => {
 }
 
 // =========================================
-// 節點編輯 Modal 狀態與邏輯
+// 節點設定/複製/刪除
 // =========================================
 
 const isEditModalOpen = ref(false)
@@ -123,18 +123,14 @@ onMounted(async () => {
       class="app-header z-10 flex flex-shrink-0 items-center justify-between bg-white px-6 py-3.5"
     >
       <div class="flex items-center gap-2.5">
-        <div
-          class="app-header__logo flex h-7 w-7 items-center justify-center rounded-md text-sm"
-        >
+        <div class="app-header__logo flex h-7 w-7 items-center justify-center rounded-md text-sm">
           ⬡
         </div>
         <div>
           <div class="app-header__title text-[15px] font-semibold tracking-[-0.02em]">
             Vue Flow Playground
           </div>
-          <div class="app-header__subtitle text-[11px] text-[#909399]">
-            互動式流程圖編輯器
-          </div>
+          <div class="app-header__subtitle text-[11px] text-[#909399]">互動式流程圖編輯器</div>
         </div>
       </div>
 

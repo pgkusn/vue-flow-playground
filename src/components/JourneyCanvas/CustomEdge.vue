@@ -2,37 +2,28 @@
 import { computed, type CSSProperties } from 'vue'
 import {
   getSmoothStepPath,
-  getStraightPath,
   EdgeLabelRenderer,
   BaseEdge,
   useVueFlow,
   type EdgeProps,
 } from '@vue-flow/core'
 import { Delete } from '@element-plus/icons-vue'
-import type { JourneyEdgeData } from '../composables/useJourneyData'
 
-const props = defineProps<EdgeProps<JourneyEdgeData>>()
+const props = defineProps<EdgeProps>()
 
 const { removeEdges } = useVueFlow()
 
-/** data.straight 為 true（如動作↔判斷節點）時改用直線，否則用平滑階梯線 */
+/** 統一使用平滑階梯線 */
 const pathData = computed(() =>
-  props.data?.straight
-    ? getStraightPath({
-        sourceX: props.sourceX,
-        sourceY: props.sourceY,
-        targetX: props.targetX,
-        targetY: props.targetY,
-      })
-    : getSmoothStepPath({
-        sourceX: props.sourceX,
-        sourceY: props.sourceY,
-        sourcePosition: props.sourcePosition,
-        targetX: props.targetX,
-        targetY: props.targetY,
-        targetPosition: props.targetPosition,
-        borderRadius: 8,
-      }),
+  getSmoothStepPath({
+    sourceX: props.sourceX,
+    sourceY: props.sourceY,
+    sourcePosition: props.sourcePosition,
+    targetX: props.targetX,
+    targetY: props.targetY,
+    targetPosition: props.targetPosition,
+    borderRadius: 8,
+  }),
 )
 
 const edgePath = computed(() => pathData.value[0])

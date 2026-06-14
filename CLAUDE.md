@@ -33,10 +33,11 @@ public/data.json
 
 關鍵慣例：
 
-- **`data.json` 不含座標**，位置由 `useJourneyLayout.ts` 用 `@dagrejs/dagre` 以 LR（由左至右）自動計算。dagre 回傳中心點，需換算成 Vue Flow 的左上角座標。其中還有兩段後處理：action↔condition 之間拉成水平直線、強制 condition 的 Yes 分支在 No 分支上方。
-- **節點 type 對應**：API 的 `entry/wait/action/end` 都映射到 Vue Flow type `'journey'`（`JourneyNode.vue`），只有 `condition` 映射到 `'condition'`（`ConditionNode.vue`，具 yes/no 兩個輸出 Handle）。自訂節點透過 `<VueFlow>` 的動態插槽 `#node-journey` / `#node-condition` 註冊。
-- **branch type → Handle/樣式**：`'0'`→ Yes（綠、sourceHandle `yes`）、`'else'`→ No（紅、sourceHandle `no`）、`'default'`→ 灰色單一輸出。`onConnect`（`JourneyCanvas.vue`）在使用者手動連線時套用同一套配色。
-- **所有 edge type 皆為 `'deletable'`**，由 `CustomEdge.vue` 渲染（動態插槽 `#edge-deletable`），提供 hover 顯示刪除鈕；`data.straight` 為 true 時改用直線而非平滑階梯線。
+- **畫布元件集中在 `src/components/JourneyCanvas/`**：入口 `index.vue`（即 `<VueFlow>` 容器）、`DefaultNode.vue`、`ConditionNode.vue`、`CustomEdge.vue`；`Sidebar.vue` 留在 `src/components/`。跨目錄 import 一律用 `@`（指向 `src`，設定於 `vite.config.ts` 的 `resolve.alias` 與 `tsconfig.app.json` 的 `paths`），同資料夾 sibling 維持 `./`。
+- **`data.json` 不含座標**，位置由 `useJourneyLayout.ts` 用 `@dagrejs/dagre` 以 LR（由左至右）自動計算。dagre 回傳中心點，需換算成 Vue Flow 的左上角座標。所有節點估高一致（卡片實際 DOM 高度相同），確保中心換算後左右 handle 等高、連線水平；唯一後處理是強制 condition 的 Yes 分支目標在 No 分支目標上方。
+- **節點 type 對應**：API 的 `entry/wait/action/end` 都映射到 Vue Flow type `'default'`（`DefaultNode.vue`），只有 `condition` 映射到 `'condition'`（`ConditionNode.vue`，具 yes/no 兩個輸出 Handle）。自訂節點透過 `<VueFlow>` 的動態插槽 `#node-default` / `#node-condition` 註冊（`#node-default` 為覆寫 Vue Flow 內建 default 節點，屬官方支援用法）。
+- **branch type → Handle/樣式**：`'0'`→ Yes（綠、sourceHandle `yes`）、`'else'`→ No（紅、sourceHandle `no`）、`'default'`→ 灰色單一輸出。`onConnect`（`JourneyCanvas/index.vue`）在使用者手動連線時套用同一套配色。
+- **所有 edge type 皆為 `'deletable'`**，由 `CustomEdge.vue` 渲染（動態插槽 `#edge-deletable`），提供 hover 顯示刪除鈕；一律以 `getSmoothStepPath` 平滑階梯線呈現。
 
 State 管理刻意保持輕量：`nodes`/`edges` 是 `App.vue` 的 ref，子元件透過 props 傳入、透過 emit（`edit`/`copy`/`delete`）回拋，實際增刪改用 `useVueFlow()` 的 `addNodes`/`removeNodes` 等方法。
 
@@ -51,9 +52,9 @@ State 管理刻意保持輕量：`nodes`/`edges` 是 `App.vue` 的 ref，子元�
 
 1. **元件自身的 DOM 一律用 Tailwind utility class**（寫在 template）。
 2. **覆寫 Vue Flow 第三方產生的 `.vue-flow__*` DOM** 時，必須用 **非 scoped** `<style>` + 全域選擇器 + `!important`（scoped 無法穿透第三方 DOM）。這類 CSS 一律以元件根 class（如 `.journey-canvas`）作前綴，**隨元件檔案移動、不依賴全域檔案**。
-3. **元件要可獨立移植**：所需的設計變數（如 `--accent-violet`）直接複製進元件根選擇器（見 `JourneyCanvas.vue` 的 `.journey-canvas`），不依賴全域 `:root`。
+3. **元件要可獨立移植**：所需的設計變數（如 `--accent-violet`）直接複製進元件根選擇器（見 `JourneyCanvas/index.vue` 的 `.journey-canvas`），不依賴全域 `:root`。
 4. 將全域 CSS 搬進元件時，優先評估改寫成 Tailwind utility，而非原樣搬移；無對應 utility 者（如 `-webkit-text-fill-color`、`:first-child` 結構選擇器）才保留 CSS。
-5. **2.2.17 的限制（重要）**：JIT 支援 `[...]` arbitrary value，但僅限**單 token** 值（如 `text-[15px]`、`bg-[#d4d7de]`、`z-[999]`）；**多 token 值空格須用逗號、不可用底線**，且 gradient／box-shadow／font 堆疊等複雜值不可靠 → 一律改原生 CSS（見 `App.vue` 的 `.app-header__logo`、`.modal-overlay`，`JourneyCanvas.vue` 的 `.journey-canvas--dragover`）。另有 v3+ 才有、2.2.17 沒有的 utility 須替換：`shrink-0`→`flex-shrink-0`、`slate` 調色盤→arbitrary hex、`cursor-grab`／`backdrop-blur`／`active:scale` 等→原生 CSS。`@apply` 可用（含 arbitrary value 與變體）；v4 的 `@reference` 不需要。
+5. **2.2.17 的限制（重要）**：JIT 支援 `[...]` arbitrary value，但僅限**單 token** 值（如 `text-[15px]`、`bg-[#d4d7de]`、`z-[999]`）；**多 token 值空格須用逗號、不可用底線**，且 gradient／box-shadow／font 堆疊等複雜值不可靠 → 一律改原生 CSS（見 `App.vue` 的 `.app-header__logo`、`.modal-overlay`，`JourneyCanvas/index.vue` 的 `.journey-canvas--dragover`）。另有 v3+ 才有、2.2.17 沒有的 utility 須替換：`shrink-0`→`flex-shrink-0`、`slate` 調色盤→arbitrary hex、`cursor-grab`／`backdrop-blur`／`active:scale` 等→原生 CSS。`@apply` 可用（含 arbitrary value 與變體）；v4 的 `@reference` 不需要。
 
 ## OpenSpec 工作流程
 

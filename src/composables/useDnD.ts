@@ -61,7 +61,7 @@ export const useDnD = () => {
     const config = typeConfig[nodeType]
     const newNode: Node = {
       id: nextNodeId(),
-      type: nodeType === 'condition' ? 'condition' : 'journey',
+      type: nodeType === 'condition' ? 'condition' : 'default',
       position,
       data: {
         type: nodeType,

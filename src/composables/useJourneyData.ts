@@ -30,11 +30,6 @@ export interface JourneyNodeData {
   raw: unknown
 }
 
-/** edge.data 結構：straight 為 true 時連線改用直線 */
-export interface JourneyEdgeData {
-  straight?: boolean
-}
-
 /** 分支樣式（取自設計稿）：default 灰、0 綠（Yes）、else 紅（No） */
 const BRANCH_STROKE = {
   default: '#909399',
@@ -51,7 +46,7 @@ const summarize = (): string => {
 const toFlowNode = (node: JourneyApiNode): Node<JourneyNodeData> => {
   return {
     id: node.id,
-    type: node.type === 'condition' ? 'condition' : 'journey',
+    type: node.type === 'condition' ? 'condition' : 'default',
     position: { x: 0, y: 0 },
     data: {
       type: node.type,
@@ -63,7 +58,7 @@ const toFlowNode = (node: JourneyApiNode): Node<JourneyNodeData> => {
 }
 
 /** API branches → Vue Flow edges */
-const toFlowEdges = (node: JourneyApiNode, typeById: Map<string, JourneyNodeType>): Edge<JourneyEdgeData>[] => {
+const toFlowEdges = (node: JourneyApiNode): Edge[] => {
   const branches = Array.isArray(node.branches) ? node.branches : []
   return branches.map(branch => {
     const isYes = branch.type === '0'
@@ -72,13 +67,7 @@ const toFlowEdges = (node: JourneyApiNode, typeById: Map<string, JourneyNodeType
     const sourceHandle = isYes ? 'yes' : isNo ? 'no' : undefined
     const label = isYes ? 'Yes' : isNo ? 'No' : undefined
 
-    // 動作節點與判斷節點之間的線段以直線呈現
-    const targetType = typeById.get(branch.targetNodeId)
-    const straight =
-      (node.type === 'action' && targetType === 'condition') ||
-      (node.type === 'condition' && targetType === 'action')
-
-    const edge: Edge<JourneyEdgeData> = {
+    const edge: Edge = {
       id: `e-${node.id}-${branch.type}-${branch.targetNodeId}`,
       source: node.id,
       target: branch.targetNodeId,
@@ -88,7 +77,6 @@ const toFlowEdges = (node: JourneyApiNode, typeById: Map<string, JourneyNodeType
     }
     if (sourceHandle) edge.sourceHandle = sourceHandle
     if (label) edge.label = label
-    if (straight) edge.data = { straight: true }
     return edge
   })
 }
@@ -109,9 +97,8 @@ export const loadJourney = async (): Promise<LoadJourneyResult> => {
   const data = (await res.json()) as JourneyData
   if (!data || !Array.isArray(data.nodes)) throw new Error('data.json 格式不正確：缺少 nodes 陣列')
 
-  const typeById = new Map(data.nodes.map(n => [n.id, n.type]))
   const flowNodes = data.nodes.map(toFlowNode)
-  const flowEdges = data.nodes.flatMap(node => toFlowEdges(node, typeById))
+  const flowEdges = data.nodes.flatMap(toFlowEdges)
   const positioned = layoutJourney(flowNodes, flowEdges) as Node<JourneyNodeData>[]
 
   return { nodes: positioned, edges: flowEdges }

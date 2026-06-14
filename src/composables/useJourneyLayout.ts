@@ -1,12 +1,10 @@
 import dagre from '@dagrejs/dagre'
 import type { Node, Edge } from '@vue-flow/core'
-import type { JourneyEdgeData } from './useJourneyData'
 
-/** 節點估計尺寸（供 dagre 計算間距用） */
+/** 節點估計尺寸（供 dagre 計算間距用）。所有卡片實際 DOM 高度相同，故估高一致，
+ *  以免中心點換算左上角時各類型偏移不一、導致左右 handle 不等高、連線出現高低落差 */
 const NODE_WIDTH = 180
 const NODE_HEIGHT = 64
-/** 判斷節點較高，容納上下兩個輸出 handle */
-const CONDITION_HEIGHT = 84
 
 /**
  * 自動版面配置：以 @dagrejs/dagre 由左至右（LR）排列。
@@ -23,13 +21,8 @@ export function layoutJourney(nodes: Node[], edges: Edge[]): Node[] {
   g.setGraph({ rankdir: 'LR', nodesep: 60, ranksep: 120 })
   g.setDefaultEdgeLabel(() => ({}))
 
-  const sizeOf = (node: Node) => ({
-    width: NODE_WIDTH,
-    height: node.type === 'condition' ? CONDITION_HEIGHT : NODE_HEIGHT,
-  })
-
   for (const node of nodes) {
-    g.setNode(node.id, sizeOf(node))
+    g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT })
   }
 
   const idSet = new Set(nodes.map(n => n.id))
@@ -42,26 +35,14 @@ export function layoutJourney(nodes: Node[], edges: Edge[]): Node[] {
 
   const positioned = nodes.map(node => {
     const { x, y } = g.node(node.id)
-    const { width, height } = sizeOf(node)
     return {
       ...node,
       // dagre 回傳中心點，換算成左上角
-      position: { x: x - width / 2, y: y - height / 2 },
+      position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 },
     }
   })
 
   const byId = new Map(positioned.map(n => [n.id, n]))
-
-  // 動作節點與判斷節點之間需為水平直線：兩種卡片實際 DOM 高度相同、handle 置中，
-  // 故直接將判斷節點頂端對齊動作節點頂端即可使左右 handle 等高、連線水平
-  for (const edge of edges) {
-    if (!(edge.data as JourneyEdgeData | undefined)?.straight) continue
-    const src = byId.get(edge.source)
-    const tgt = byId.get(edge.target)
-    if (!src || !tgt) continue
-    const [anchor, mover] = src.type === 'condition' ? [tgt, src] : [src, tgt]
-    mover.position.y = anchor.position.y
-  }
 
   // dagre 的同層排序不保證 Yes/No 方向，這裡強制 Yes 分支目標位於 No 分支目標上方
   for (const node of positioned) {

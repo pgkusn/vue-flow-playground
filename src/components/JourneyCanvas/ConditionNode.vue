@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JourneyNodeData } from '../composables/useJourneyData'
+import type { JourneyNodeData } from '@/composables/useJourneyData'
 import { Handle, Position } from '@vue-flow/core'
 import { Share, Setting, CopyDocument, Delete } from '@element-plus/icons-vue'
 
@@ -21,7 +21,7 @@ const noHandleStyle = { top: '68%', width: '8px', height: '8px', background: '#e
 </script>
 
 <template>
-  <div class="group relative w-40 rounded-lg border border-[#d4d7de] bg-white shadow-sm transition hover:border-[#dc2626] hover:shadow-md">
+  <div class="group relative w-40 rounded-lg border border-[#d4d7de] bg-white shadow-sm transition hover:border-[#3b82f6] hover:shadow-md">
     <!-- hover 動作列：bottom-full 緊貼卡片上緣，pb-2 為透明橋接區，使 hover 命中區連續不中斷 -->
     <div
       class="pointer-events-none absolute right-0 bottom-full flex gap-1.5 pb-2 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"

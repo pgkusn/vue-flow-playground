@@ -2,7 +2,7 @@
 import { computed, type Component } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { Flag, Pointer, Clock, Setting, CopyDocument, Delete } from '@element-plus/icons-vue'
-import type { JourneyNodeData } from '../composables/useJourneyData'
+import type { JourneyNodeData } from '@/composables/useJourneyData'
 
 const props = defineProps<{
   id: string

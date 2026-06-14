@@ -4,12 +4,12 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import type { Node, Edge, Connection } from '@vue-flow/core'
-import type { JourneyNodeData } from '../composables/useJourneyData'
+import type { JourneyNodeData } from '@/composables/useJourneyData'
 
-import JourneyNode from './JourneyNode.vue'
+import DefaultNode from './DefaultNode.vue'
 import ConditionNode from './ConditionNode.vue'
 import CustomEdge from './CustomEdge.vue'
-import { useDnD } from '../composables/useDnD'
+import { useDnD } from '@/composables/useDnD'
 
 defineProps<{
   nodes: Node[]
@@ -69,8 +69,8 @@ onConnect((connection: Connection) => {
       :default-edge-options="{ type: 'deletable' }"
     >
       <!-- 一般旅程節點（entry / wait / action / end） -->
-      <template #node-journey="nodeProps">
-        <JourneyNode
+      <template #node-default="nodeProps">
+        <DefaultNode
           v-bind="nodeProps"
           @edit="emit('edit', $event)"
           @copy="emit('copy', $event)"
@@ -126,6 +126,8 @@ onConnect((connection: Connection) => {
 
 .journey-canvas .vue-flow__node {
   font-family: var(--font-sans) !important;
+  width: auto !important;
+  padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
